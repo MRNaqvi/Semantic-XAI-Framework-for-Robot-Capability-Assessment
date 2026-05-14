@@ -53,6 +53,7 @@ const modelFileInputs = {
   "IRB 2400": document.querySelector("#modelIrb2400File"),
   "IRB 1200": document.querySelector("#modelIrb1200File"),
 };
+const fileInputs = Array.from(document.querySelectorAll(".file-picker input[type='file']"));
 
 let lastResult = null;
 let lastFacts = [];
@@ -216,6 +217,15 @@ function renderRules() {
     card.innerHTML = `<h3>${rule.title}</h3><p>${rule.text}</p>`;
     ruleList.appendChild(card);
   });
+}
+
+function refreshFileName(input) {
+  const label = document.querySelector(`.file-name[data-for="${input.id}"]`);
+  if (!label) {
+    return;
+  }
+
+  label.textContent = input.files[0]?.name || "No file selected";
 }
 
 function activateTab(tabId) {
@@ -818,6 +828,9 @@ uploadRulesButton.addEventListener("click", uploadRulesFromFile);
 uploadModelsButton.addEventListener("click", uploadCustomModels);
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => activateTab(button.dataset.tab));
+});
+fileInputs.forEach((input) => {
+  input.addEventListener("change", () => refreshFileName(input));
 });
 
 xyzInput.addEventListener("keydown", (event) => {

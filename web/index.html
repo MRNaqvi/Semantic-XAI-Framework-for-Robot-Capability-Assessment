@@ -24,48 +24,78 @@
   </aside>
 
   <main class="workspace">
-    <header class="topbar">
+    <header class="hero-header">
+      <div>
+        <p class="eyebrow">Manufacturing Demo</p>
+        <h1>A Human-Centric Semantic XAI Framework for Robot Suitability and Capability Assessment in Manufacturing Demo</h1>
+      </div>
+    </header>
+
+    <section class="status-bar">
       <div class="datastore-in-use">
         <span>Data Store in use: <strong>S-XAI</strong></span>
         <small>* using default settings</small>
         <input id="datastore" value="S-XAI" type="hidden">
       </div>
       <button class="blue-button" id="uploadButton" type="button">Reload Defaults</button>
-    </header>
+    </section>
 
     <section class="setup-panel">
       <div class="resource-upload-grid">
         <section class="resource-card">
-          <h2>Upload your OWL/RDF ontology</h2>
-          <label class="file-row">
-            <span>OWL, RDF, TTL</span>
+          <div class="resource-card-head">
+            <span class="resource-icon">KG</span>
+            <div>
+              <h2>Upload your OWL/RDF ontology</h2>
+              <p>Accepts OWL, RDF, TTL</p>
+            </div>
+          </div>
+          <label class="file-picker">
             <input id="ontologyFile" type="file" accept=".ttl,.rdf,.owl,.txt">
+            <span class="file-button">Choose ontology</span>
+            <span class="file-name" data-for="ontologyFile">No file selected</span>
           </label>
           <button id="uploadOntologyButton" class="pill small-pill" type="button">Upload Ontology</button>
         </section>
 
         <section class="resource-card">
-          <h2>Upload your Datalog rule</h2>
-          <label class="file-row">
-            <span>DLOG, TXT</span>
+          <div class="resource-card-head">
+            <span class="resource-icon">RL</span>
+            <div>
+              <h2>Upload your Datalog rule</h2>
+              <p>Accepts DLOG, TXT</p>
+            </div>
+          </div>
+          <label class="file-picker">
             <input id="rulesFile" type="file" accept=".dlog,.txt">
+            <span class="file-button">Choose rule</span>
+            <span class="file-name" data-for="rulesFile">No file selected</span>
           </label>
           <button id="uploadRulesButton" class="pill small-pill" type="button">Upload Rule</button>
         </section>
 
         <section class="resource-card">
-          <h2>Upload your ML models as Keras</h2>
-          <label class="file-row">
-            <span>Ned-2 model</span>
+          <div class="resource-card-head">
+            <span class="resource-icon">NN</span>
+            <div>
+              <h2>Upload your ML models as Keras</h2>
+              <p>One .keras file per robot</p>
+            </div>
+          </div>
+          <label class="file-picker">
             <input id="modelNed2File" type="file" accept=".keras">
+            <span class="file-button">Ned-2</span>
+            <span class="file-name" data-for="modelNed2File">No file selected</span>
           </label>
-          <label class="file-row">
-            <span>IRB 2400 model</span>
+          <label class="file-picker">
             <input id="modelIrb2400File" type="file" accept=".keras">
+            <span class="file-button">IRB 2400</span>
+            <span class="file-name" data-for="modelIrb2400File">No file selected</span>
           </label>
-          <label class="file-row">
-            <span>IRB 1200 model</span>
+          <label class="file-picker">
             <input id="modelIrb1200File" type="file" accept=".keras">
+            <span class="file-button">IRB 1200</span>
+            <span class="file-name" data-for="modelIrb1200File">No file selected</span>
           </label>
           <button id="uploadModelsButton" class="pill small-pill" type="button">Upload Keras Models</button>
           <pre id="modelStatus" class="model-status">Bundled Keras models are loaded by Flask.</pre>
