@@ -48,12 +48,9 @@ const uploadOntologyButton = document.querySelector("#uploadOntologyButton");
 const uploadRulesButton = document.querySelector("#uploadRulesButton");
 const uploadModelsButton = document.querySelector("#uploadModelsButton");
 const modelStatus = document.querySelector("#modelStatus");
-const modelFileInputs = {
-  "Ned 2": document.querySelector("#modelNed2File"),
-  "IRB 2400": document.querySelector("#modelIrb2400File"),
-  "IRB 1200": document.querySelector("#modelIrb1200File"),
-};
-const fileInputs = Array.from(document.querySelectorAll(".file-picker input[type='file']"));
+const modelsFile = document.querySelector("#modelsFile");
+const explanationTabs = Array.from(document.querySelectorAll(".explanation-tab"));
+const explanationPanels = Array.from(document.querySelectorAll(".explanation-panel"));
 
 let lastResult = null;
 let lastFacts = [];
@@ -228,6 +225,18 @@ function refreshFileName(input) {
   label.textContent = input.files[0]?.name || "No file selected";
 }
 
+function activateExplanationTab(tabId) {
+  explanationTabs.forEach((button) => {
+    button.classList.toggle("active", button.dataset.explanationTab === tabId);
+  });
+
+  explanationPanels.forEach((panel) => {
+    const isActive = panel.id === tabId;
+    panel.classList.toggle("active", isActive);
+    panel.hidden = !isActive;
+  });
+}
+
 function activateTab(tabId) {
   tabButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.tab === tabId);
@@ -283,14 +292,30 @@ async function refreshModelStatus() {
 async function uploadCustomModels() {
   try {
     const formData = new FormData();
-    Object.entries(modelFileInputs).forEach(([robot, input]) => {
-      if (input.files[0]) {
-        formData.append(robot, input.files[0]);
+    const files = Array.from(modelsFile.files || []);
+    const remaining = [...files];
+    const assignments = [
+      ["Ned 2", (name) => name.includes("ned") || name.includes("model_robotic_arm_2")],
+      ["IRB 2400", (name) => name.includes("2400") || name.includes("model_robotic_arm_3")],
+      ["IRB 1200", (name) => name.includes("1200") || name.includes("model_robotic_arm_4")],
+    ];
+
+    assignments.forEach(([robot, matcher]) => {
+      const index = remaining.findIndex((file) => matcher(file.name.toLowerCase()));
+      if (index >= 0) {
+        formData.append(robot, remaining[index]);
+        remaining.splice(index, 1);
       }
     });
 
+    if (!Array.from(formData.keys()).length && files.length === 3) {
+      formData.append("Ned 2", files[0]);
+      formData.append("IRB 2400", files[1]);
+      formData.append("IRB 1200", files[2]);
+    }
+
     if (!Array.from(formData.keys()).length) {
-      throw new Error("Choose at least one .keras model file.");
+      throw new Error("Choose .keras files named for Ned-2, IRB 2400, or IRB 1200.");
     }
 
     uploadModelsButton.disabled = true;
@@ -312,7 +337,8 @@ async function uploadCustomModels() {
     statusText.textContent = error.message;
   } finally {
     uploadModelsButton.disabled = false;
-    uploadModelsButton.textContent = "Upload Models";
+    uploadModelsButton.textContent = "Upload Keras Models";
+    modelsFile.value = "";
   }
 }
 
@@ -352,12 +378,16 @@ function renderFacts(facts) {
       graphButton.addEventListener("click", () => {
         selectedFact = fact;
         renderGraph(fact);
+        activateExplanationTab("graphTab");
       });
 
       const explainButton = document.createElement("button");
       explainButton.type = "button";
       explainButton.textContent = "Explain";
-      explainButton.addEventListener("click", () => explainFact(fact));
+      explainButton.addEventListener("click", () => {
+        activateExplanationTab("nlTab");
+        explainFact(fact);
+      });
 
       row.appendChild(graphButton);
       row.appendChild(explainButton);
@@ -823,14 +853,17 @@ refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
 cancelButton.addEventListener("click", closeDialog);
 okButton.addEventListener("click", closeDialog);
-uploadOntologyButton.addEventListener("click", uploadOntologyFromFile);
-uploadRulesButton.addEventListener("click", uploadRulesFromFile);
-uploadModelsButton.addEventListener("click", uploadCustomModels);
+uploadOntologyButton.addEventListener("click", () => ontologyFile.click());
+uploadRulesButton.addEventListener("click", () => rulesFile.click());
+uploadModelsButton.addEventListener("click", () => modelsFile.click());
+ontologyFile.addEventListener("change", uploadOntologyFromFile);
+rulesFile.addEventListener("change", uploadRulesFromFile);
+modelsFile.addEventListener("change", uploadCustomModels);
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => activateTab(button.dataset.tab));
 });
-fileInputs.forEach((input) => {
-  input.addEventListener("change", () => refreshFileName(input));
+explanationTabs.forEach((button) => {
+  button.addEventListener("click", () => activateExplanationTab(button.dataset.explanationTab));
 });
 
 xyzInput.addEventListener("keydown", (event) => {

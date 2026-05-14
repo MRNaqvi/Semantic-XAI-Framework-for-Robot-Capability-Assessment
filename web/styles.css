@@ -255,6 +255,10 @@ body {
   overflow: hidden;
 }
 
+.native-file-input {
+  display: none;
+}
+
 .file-picker input {
   position: absolute;
   inline-size: 1px;
@@ -290,6 +294,11 @@ body {
   white-space: pre-wrap;
   color: var(--muted);
   font-size: 12px;
+}
+
+.resource-card .pill {
+  width: 100%;
+  min-width: 0;
 }
 
 .task-panel {
@@ -375,6 +384,42 @@ body {
 .facts-workspace {
   margin-top: 28px;
   padding-bottom: 40px;
+}
+
+.explanation-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+
+.explanation-tab {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(18, 28, 44, 0.36);
+  color: var(--muted);
+  padding: 0 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.explanation-tab.active {
+  color: var(--text);
+  background: rgba(47, 154, 244, 0.24);
+  border-color: rgba(127, 210, 255, 0.42);
+}
+
+.explanation-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.explanation-panel h2 {
+  margin: 0 0 12px;
+  font-size: 19px;
 }
 
 .section-head,
