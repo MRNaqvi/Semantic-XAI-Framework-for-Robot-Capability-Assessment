@@ -93,10 +93,10 @@ body {
 
 .hero-header h1 {
   margin: 0;
-  max-width: 1180px;
+  max-width: 1160px;
   color: var(--text);
-  font-size: clamp(28px, 3vw, 48px);
-  line-height: 1.05;
+  font-size: clamp(24px, 2.1vw, 34px);
+  line-height: 1.12;
   font-weight: 800;
 }
 
@@ -420,6 +420,23 @@ body {
 .explanation-panel h2 {
   margin: 0 0 12px;
   font-size: 19px;
+}
+
+.rule-log-page {
+  margin-top: 28px;
+}
+
+.rule-log {
+  min-height: 520px;
+  margin: 16px 0 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(18, 28, 44, 0.52);
+  color: var(--muted);
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .section-head,

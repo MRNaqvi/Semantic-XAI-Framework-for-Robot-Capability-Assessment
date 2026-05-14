@@ -17,9 +17,9 @@
       <span>?</span>
       <strong>Explanations</strong>
     </button>
-    <button class="nav-item" title="Rule Engine" aria-label="Rule Engine">
+    <button class="nav-item" id="ruleLogPageButton" title="Rule Log" aria-label="Rule Log">
       <span>=</span>
-      <strong>Rule Engine</strong>
+      <strong>Rule Log</strong>
     </button>
   </aside>
 
@@ -152,6 +152,16 @@
         <h2>Datalog Rule Explanation</h2>
         <div id="ruleList" class="rule-list"></div>
       </section>
+    </section>
+
+    <section class="rule-log-page app-page" id="ruleLogPage" hidden>
+      <div class="section-head">
+        <h1>Rule Log</h1>
+        <div class="section-actions">
+          <button id="clearRuleLogButton" class="pill small-pill" type="button">Clear Log</button>
+        </div>
+      </div>
+      <pre id="ruleLog" class="rule-log">Rule engine events will appear here when ontology, Datalog rules, model values, or inferred facts are updated.</pre>
     </section>
   </main>
 

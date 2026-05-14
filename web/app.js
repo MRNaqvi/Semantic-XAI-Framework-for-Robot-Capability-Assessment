@@ -37,6 +37,10 @@ const runPage = document.querySelector("#runPage");
 const explanationsPage = document.querySelector("#explanationsPage");
 const runPageButton = document.querySelector("#runPageButton");
 const explanationsPageButton = document.querySelector("#explanationsPageButton");
+const ruleLogPage = document.querySelector("#ruleLogPage");
+const ruleLogPageButton = document.querySelector("#ruleLogPageButton");
+const ruleLog = document.querySelector("#ruleLog");
+const clearRuleLogButton = document.querySelector("#clearRuleLogButton");
 const factsList = document.querySelector("#factsList");
 const factGraph = document.querySelector("#factGraph");
 const tracePanel = document.querySelector("#tracePanel");
@@ -62,13 +66,23 @@ let baselineFacts = [];
 let simulatedFacts = [];
 let selectedFact = null;
 let simulatedMode = false;
+let ruleLogEntries = [];
 
 function showPage(pageName) {
   const showExplanations = pageName === "explanations";
-  runPage.hidden = showExplanations;
+  const showRuleLog = pageName === "ruleLog";
+  runPage.hidden = showExplanations || showRuleLog;
   explanationsPage.hidden = !showExplanations;
-  runPageButton.classList.toggle("active", !showExplanations);
+  ruleLogPage.hidden = !showRuleLog;
+  runPageButton.classList.toggle("active", !showExplanations && !showRuleLog);
   explanationsPageButton.classList.toggle("active", showExplanations);
+  ruleLogPageButton.classList.toggle("active", showRuleLog);
+}
+
+function appendRuleLog(message) {
+  const timestamp = new Date().toLocaleTimeString();
+  ruleLogEntries.unshift(`[${timestamp}] ${message}`);
+  ruleLog.textContent = ruleLogEntries.join("\n");
 }
 
 const factTypes = [
@@ -273,8 +287,10 @@ async function uploadOntologyFromFile() {
   try {
     const text = await fileToText(ontologyFile.files[0]);
     await uploadOntologyText(text, "Custom ontology uploaded.");
+    appendRuleLog(`Ontology uploaded: ${ontologyFile.files[0]?.name || "custom file"}.`);
   } catch (error) {
     statusText.textContent = error.message;
+    appendRuleLog(`Ontology upload failed: ${error.message}`);
   }
 }
 
@@ -282,8 +298,10 @@ async function uploadRulesFromFile() {
   try {
     const text = await fileToText(rulesFile.files[0]);
     await uploadRuleText(text, "Custom Datalog rules uploaded.");
+    appendRuleLog(`Datalog rule uploaded: ${rulesFile.files[0]?.name || "custom file"}.`);
   } catch (error) {
     statusText.textContent = error.message;
+    appendRuleLog(`Datalog rule upload failed: ${error.message}`);
   }
 }
 
@@ -345,8 +363,10 @@ async function uploadCustomModels() {
 
     modelStatus.textContent = `Loaded: ${payload.loaded_models.join(", ")}`;
     statusText.textContent = "Custom Keras models uploaded and reloaded.";
+    appendRuleLog(`Keras models uploaded and reloaded: ${payload.loaded_models.join(", ")}.`);
   } catch (error) {
     statusText.textContent = error.message;
+    appendRuleLog(`Keras model upload failed: ${error.message}`);
   } finally {
     uploadModelsButton.disabled = false;
     uploadModelsButton.textContent = "Upload Keras Models";
@@ -509,8 +529,10 @@ async function refreshFacts(target = "after") {
     beforeFacts.textContent = factsToText(baselineFacts);
     afterFacts.textContent = factsToText(simulatedFacts);
     renderFacts(lastFacts);
+    appendRuleLog(`Facts refreshed: ${lastFacts.length} fact(s) loaded for ${target} view.`);
   } catch (error) {
     statusText.textContent = error.message;
+    appendRuleLog(`Facts refresh failed: ${error.message}`);
   }
 }
 
@@ -722,8 +744,10 @@ async function uploadKnowledgeBase() {
     await uploadOntologyText(ttlText);
     await uploadRuleText(dlogText);
     statusText.textContent = "S-XAI ontology, rules, and Keras models are ready.";
+    appendRuleLog("Default S-XAI ontology and Datalog rules reloaded.");
   } catch (error) {
     statusText.textContent = error.message;
+    appendRuleLog(`Default reload failed: ${error.message}`);
   } finally {
     uploadButton.disabled = false;
     uploadButton.textContent = "Reload Defaults";
@@ -795,6 +819,7 @@ async function executePrediction() {
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
     });
+    appendRuleLog(`NN model prediction completed for XYZ: ${coordinates.join(", ")}.`);
     simulatedMode = false;
     resultText.textContent = formatResults(lastResult.model_outputs);
     simulationPanel.hidden = true;
@@ -802,6 +827,7 @@ async function executePrediction() {
     resultDialog.showModal();
   } catch (error) {
     statusText.textContent = error.message;
+    appendRuleLog(`Prediction failed: ${error.message}`);
   } finally {
     executeButton.disabled = false;
     executeButton.textContent = "Execute";
@@ -833,10 +859,12 @@ async function submitOntologyUpdate() {
 
     closeDialog();
     statusText.textContent = "Operational capability values updated.";
+    appendRuleLog("Operational capability values updated in the Knowledge Graph.");
     await refreshFacts(simulatedMode ? "after" : "before");
     showPage("explanations");
   } catch (error) {
     statusText.textContent = error.message;
+    appendRuleLog(`Knowledge Graph update failed: ${error.message}`);
   } finally {
     submitButton.disabled = false;
     submitButton.textContent = "Submit";
@@ -860,6 +888,11 @@ addButton.addEventListener("click", () => {
 uploadButton.addEventListener("click", uploadKnowledgeBase);
 runPageButton.addEventListener("click", () => showPage("run"));
 explanationsPageButton.addEventListener("click", () => showPage("explanations"));
+ruleLogPageButton.addEventListener("click", () => showPage("ruleLog"));
+clearRuleLogButton.addEventListener("click", () => {
+  ruleLogEntries = [];
+  ruleLog.textContent = "Rule engine events will appear here when ontology, Datalog rules, model values, or inferred facts are updated.";
+});
 executeButton.addEventListener("click", executePrediction);
 simulateButton.addEventListener("click", toggleSimulationPanel);
 applySimulationButton.addEventListener("click", applySimulationValues);
