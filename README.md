@@ -1,4 +1,4 @@
-# Robot Operational Capability Demo
+# A Human-Centric Semantic XAI Framework for Robot Capability and Suitability Assessment in Manufacturing Demo
 
 This project runs a robot operational capability workflow:
 
