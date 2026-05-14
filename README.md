@@ -8,6 +8,10 @@ This project runs a robot operational capability workflow:
 - RDFox 7.5b stores the ontology, Datalog rules, and facts.
 - Natural language explanations are optional and require the user's own OpenAI API key.
 
+## Version Note
+
+This S-XAI demo version includes Natural Language explanations. To enable them, copy `config.template.ps1` to `config.local.ps1`, add your OpenAI API key as `$env:OPENAI_API_KEY`, and restart the application. Without the key, model prediction, KG updates, facts, and graph explanations still work.
+
 ## Requirements
 
 - Windows

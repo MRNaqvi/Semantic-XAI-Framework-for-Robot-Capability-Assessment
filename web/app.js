@@ -120,6 +120,16 @@ const factLabels = {
   "RCO:OptimalRobot": "Optimal robot",
 };
 
+const graphRuleLabels = {
+  "RCO:BestSuitableDueToRepeatability": "Minimum\nrepeatability\ncheck",
+  "RCO:BestSuitableDueToPrecision": "Maximum\nprecision\ncheck",
+  "RCO:LeastSuitableDueToRepeatability": "Maximum\nrepeatability\ncheck",
+  "RCO:LeastSuitableDueToPrecision": "Minimum\nprecision\ncheck",
+  "RCO:BestRobot": "Best robot\nrule",
+  "RCO:WorstRobot": "Worst robot\nrule",
+  "RCO:OptimalRobot": "Optimal robot\nrule",
+};
+
 const ruleDefinitions = [
   {
     title: "Maximum Repeatability Capability",
@@ -452,6 +462,28 @@ function renderFacts(facts) {
   });
 }
 
+function wrapGraphLabel(label, maxLength = 18) {
+  const words = label.split(" ");
+  const lines = [];
+  let current = "";
+
+  words.forEach((word) => {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxLength && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  });
+
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines.join("\n");
+}
+
 function renderGraph(fact) {
   factGraph.innerHTML = "";
   tracePanel.innerHTML = "";
@@ -471,8 +503,8 @@ function renderGraph(fact) {
     { id: "robot", label: robot, x: 90, y: 180 },
     { id: "repeatability", label: `Repeatability\n${formatValue(modelResult?.repeatability ?? 0)}`, x: 275, y: 100 },
     { id: "precision", label: `Precision\n${formatValue(modelResult?.precision ?? 0)}`, x: 275, y: 260 },
-    { id: "rule", label: classification, x: 500, y: 180 },
-    { id: "fact", label: "Fact", x: 680, y: 180 },
+    { id: "rule", label: graphRuleLabels[fact.type] || "Suitability\nrule", x: 470, y: 180 },
+    { id: "fact", label: wrapGraphLabel(classification), x: 650, y: 180 },
   ];
 
   const edges = [
@@ -502,7 +534,7 @@ function renderGraph(fact) {
     const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circle.setAttribute("cx", node.x);
     circle.setAttribute("cy", node.y);
-    circle.setAttribute("r", node.id === "rule" ? "48" : "42");
+    circle.setAttribute("r", node.id === "fact" ? "58" : node.id === "rule" ? "46" : "42");
     group.appendChild(circle);
 
     const lines = node.label.split("\n");
