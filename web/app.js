@@ -13,6 +13,8 @@ const robotDisplayName = {
   "IRB 2400": "IRB 2400",
   "IRB 1200": "IRB 1200",
 };
+const defaultOntologyName = "MCSk222.ttl";
+const defaultRuleName = "c21.dlog";
 
 const xyzInput = document.querySelector("#xyzInput");
 const datastoreInput = document.querySelector("#datastore");
@@ -55,6 +57,8 @@ const rulesFile = document.querySelector("#rulesFile");
 const uploadOntologyButton = document.querySelector("#uploadOntologyButton");
 const uploadRulesButton = document.querySelector("#uploadRulesButton");
 const uploadModelsButton = document.querySelector("#uploadModelsButton");
+const ontologyStatus = document.querySelector("#ontologyStatus");
+const rulesStatus = document.querySelector("#rulesStatus");
 const modelStatus = document.querySelector("#modelStatus");
 const modelsFile = document.querySelector("#modelsFile");
 const explanationTabs = Array.from(document.querySelectorAll(".explanation-tab"));
@@ -67,6 +71,17 @@ let simulatedFacts = [];
 let selectedFact = null;
 let simulatedMode = false;
 let ruleLogEntries = [];
+let activeOntologyName = defaultOntologyName;
+let activeRuleName = defaultRuleName;
+let activeModelNames = "No models loaded";
+
+function renderAssetStatus(errors = "") {
+  ontologyStatus.textContent = `Ontology: ${activeOntologyName}`;
+  rulesStatus.textContent = `Datalog rules: ${activeRuleName}`;
+  modelStatus.textContent = errors
+    ? `Keras models loaded: ${activeModelNames}\nErrors:\n${errors}`
+    : `Keras models loaded: ${activeModelNames}`;
+}
 
 function showPage(pageName) {
   const showExplanations = pageName === "explanations";
@@ -285,9 +300,12 @@ async function fileToText(file) {
 
 async function uploadOntologyFromFile() {
   try {
+    const fileName = ontologyFile.files[0]?.name || "custom file";
     const text = await fileToText(ontologyFile.files[0]);
     await uploadOntologyText(text, "Custom ontology uploaded.");
-    appendRuleLog(`Ontology uploaded: ${ontologyFile.files[0]?.name || "custom file"}.`);
+    activeOntologyName = fileName;
+    renderAssetStatus();
+    appendRuleLog(`Ontology uploaded: ${fileName}.`);
   } catch (error) {
     statusText.textContent = error.message;
     appendRuleLog(`Ontology upload failed: ${error.message}`);
@@ -296,9 +314,12 @@ async function uploadOntologyFromFile() {
 
 async function uploadRulesFromFile() {
   try {
+    const fileName = rulesFile.files[0]?.name || "custom file";
     const text = await fileToText(rulesFile.files[0]);
     await uploadRuleText(text, "Custom Datalog rules uploaded.");
-    appendRuleLog(`Datalog rule uploaded: ${rulesFile.files[0]?.name || "custom file"}.`);
+    activeRuleName = fileName;
+    renderAssetStatus();
+    appendRuleLog(`Datalog rule uploaded: ${fileName}.`);
   } catch (error) {
     statusText.textContent = error.message;
     appendRuleLog(`Datalog rule upload failed: ${error.message}`);
@@ -309,11 +330,11 @@ async function refreshModelStatus() {
   try {
     const response = await fetch(modelStatusUrl);
     const payload = await response.json();
-    const loaded = payload.loaded_models?.join(", ") || "No models loaded";
+    activeModelNames = payload.loaded_models?.join(", ") || "No models loaded";
     const errors = Object.entries(payload.errors || {})
       .map(([name, error]) => `${name}: ${error}`)
       .join("\n");
-    modelStatus.textContent = errors ? `Loaded: ${loaded}\nErrors:\n${errors}` : `Loaded: ${loaded}`;
+    renderAssetStatus(errors);
   } catch (error) {
     modelStatus.textContent = error.message;
   }
@@ -361,7 +382,8 @@ async function uploadCustomModels() {
       throw new Error(payload.message || "Model upload failed.");
     }
 
-    modelStatus.textContent = `Loaded: ${payload.loaded_models.join(", ")}`;
+    activeModelNames = payload.loaded_models.join(", ");
+    renderAssetStatus();
     statusText.textContent = "Custom Keras models uploaded and reloaded.";
     appendRuleLog(`Keras models uploaded and reloaded: ${payload.loaded_models.join(", ")}.`);
   } catch (error) {
@@ -743,8 +765,11 @@ async function uploadKnowledgeBase() {
 
     await uploadOntologyText(ttlText);
     await uploadRuleText(dlogText);
-    statusText.textContent = "S-XAI ontology, rules, and Keras models are ready.";
-    appendRuleLog("Default S-XAI ontology and Datalog rules reloaded.");
+    activeOntologyName = defaultOntologyName;
+    activeRuleName = defaultRuleName;
+    renderAssetStatus();
+    statusText.textContent = "";
+    appendRuleLog(`Default S-XAI ontology (${defaultOntologyName}) and Datalog rules (${defaultRuleName}) reloaded.`);
   } catch (error) {
     statusText.textContent = error.message;
     appendRuleLog(`Default reload failed: ${error.message}`);
@@ -891,7 +916,7 @@ explanationsPageButton.addEventListener("click", () => showPage("explanations"))
 ruleLogPageButton.addEventListener("click", () => showPage("ruleLog"));
 clearRuleLogButton.addEventListener("click", () => {
   ruleLogEntries = [];
-  ruleLog.textContent = "Rule engine events will appear here when ontology, Datalog rules, model values, or inferred facts are updated.";
+  ruleLog.textContent = "System events will appear here when ontology, Datalog rules, model values, or inferred facts are updated.";
 });
 executeButton.addEventListener("click", executePrediction);
 simulateButton.addEventListener("click", toggleSimulationPanel);

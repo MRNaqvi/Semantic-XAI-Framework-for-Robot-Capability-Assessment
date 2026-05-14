@@ -17,28 +17,23 @@
       <span>?</span>
       <strong>Explanations</strong>
     </button>
-    <button class="nav-item" id="ruleLogPageButton" title="Rule Log" aria-label="Rule Log">
+    <button class="nav-item" id="ruleLogPageButton" title="System Logs" aria-label="System Logs">
       <span>=</span>
-      <strong>Rule Log</strong>
+      <strong>System Logs</strong>
     </button>
   </aside>
 
   <main class="workspace">
     <header class="hero-header">
       <div>
-        <p class="eyebrow">Manufacturing Demo</p>
-        <h1>A Human-Centric Semantic XAI Framework for Robot Suitability and Capability Assessment in Manufacturing Demo</h1>
+        <p class="eyebrow">S-XAI DEMO</p>
+        <h1>A Human-Centric Semantic XAI Framework for Robot Suitability and Capability Assessment in Manufacturing</h1>
+      </div>
+      <div class="header-actions">
+        <input id="datastore" value="S-XAI" type="hidden">
+        <button class="blue-button" id="uploadButton" type="button">Reload Defaults</button>
       </div>
     </header>
-
-    <section class="status-bar">
-      <div class="datastore-in-use">
-        <span>Data Store in use: <strong>S-XAI</strong></span>
-        <small>* using default settings</small>
-        <input id="datastore" value="S-XAI" type="hidden">
-      </div>
-      <button class="blue-button" id="uploadButton" type="button">Reload Defaults</button>
-    </section>
 
     <section class="run-page active" id="runPage">
     <section class="setup-panel">
@@ -52,6 +47,7 @@
           </div>
           <input id="ontologyFile" class="native-file-input" type="file" accept=".ttl,.rdf,.owl,.txt">
           <button id="uploadOntologyButton" class="pill small-pill" type="button">Upload Ontology</button>
+          <pre id="ontologyStatus" class="model-status">Ontology: MCSk222.ttl</pre>
         </section>
 
         <section class="resource-card">
@@ -63,6 +59,7 @@
           </div>
           <input id="rulesFile" class="native-file-input" type="file" accept=".dlog,.txt">
           <button id="uploadRulesButton" class="pill small-pill" type="button">Upload Rule</button>
+          <pre id="rulesStatus" class="model-status">Datalog rules: c21.dlog</pre>
         </section>
 
         <section class="resource-card">
@@ -74,13 +71,14 @@
           </div>
           <input id="modelsFile" class="native-file-input" type="file" accept=".keras" multiple>
           <button id="uploadModelsButton" class="pill small-pill" type="button">Upload Keras Models</button>
-          <pre id="modelStatus" class="model-status">Bundled Keras models are loaded by Flask.</pre>
+          <pre id="modelStatus" class="model-status">Keras models loaded: checking...</pre>
         </section>
       </div>
     </section>
 
     <section class="task-panel" id="taskPanel">
       <label class="task-label" for="xyzInput">Add XYZ Cartesian coordinates for the new task:</label>
+      <p class="task-note">Only X, Y, and Z are used to calculate repeatability and precision; roll, pitch, and yaw are not considered in this assessment.</p>
       <div class="input-shell">
         <input id="xyzInput" autocomplete="off" placeholder="X, Y, Z">
         <button id="clearButton" class="clear-button" type="button" aria-label="Clear">x</button>
@@ -95,11 +93,14 @@
     </section>
 
     <section class="default-context-panel">
+      <div class="default-datastore-note">
+        <span>Data Store in use: <strong>S-XAI</strong></span>
+        <small>* using default settings</small>
+      </div>
       <h2>Default Knowledge Assets</h2>
       <div class="asset-grid">
         <article>
           <h3>Robot Capability Ontology</h3>
-          <p>Data Store in use: <strong>S-XAI</strong> * using default settings.</p>
           <p>Includes the Robot Capability Ontology.</p>
           <a href="https://industryportal.enit.fr/ontologies/RCO/" target="_blank" rel="noreferrer">Source: industryportal.enit.fr/ontologies/RCO</a>
         </article>
@@ -190,12 +191,12 @@
 
     <section class="rule-log-page app-page" id="ruleLogPage" hidden>
       <div class="section-head">
-        <h1>Rule Log</h1>
+        <h1>System Logs</h1>
         <div class="section-actions">
           <button id="clearRuleLogButton" class="pill small-pill" type="button">Clear Log</button>
         </div>
       </div>
-      <pre id="ruleLog" class="rule-log">Rule engine events will appear here when ontology, Datalog rules, model values, or inferred facts are updated.</pre>
+      <pre id="ruleLog" class="rule-log">System events will appear here when ontology, Datalog rules, model values, or inferred facts are updated.</pre>
     </section>
   </main>
 
