@@ -25,56 +25,36 @@
 
   <main class="workspace">
     <header class="topbar">
-      <label class="datastore">
-        <span>Datastore</span>
-        <input id="datastore" value="S-XAI">
-      </label>
-      <button class="blue-button" id="uploadButton" type="button">Upload</button>
+      <div class="datastore-in-use">
+        <span>Data Store in use: <strong>S-XAI</strong></span>
+        <small>* using default settings</small>
+        <input id="datastore" value="S-XAI" type="hidden">
+      </div>
+      <button class="blue-button" id="uploadButton" type="button">Reload Defaults</button>
     </header>
 
     <section class="setup-panel">
-      <div class="tabs" role="tablist" aria-label="Knowledge base setup">
-        <button class="tab-button active" type="button" data-tab="defaultSetup">Default Setup</button>
-        <button class="tab-button" type="button" data-tab="ontologySetup">Ontology</button>
-        <button class="tab-button" type="button" data-tab="rulesSetup">Rules</button>
-        <button class="tab-button" type="button" data-tab="modelsSetup">Models</button>
-      </div>
+      <div class="resource-upload-grid">
+        <section class="resource-card">
+          <h2>Upload your OWL/RDF ontology</h2>
+          <label class="file-row">
+            <span>OWL, RDF, TTL</span>
+            <input id="ontologyFile" type="file" accept=".ttl,.rdf,.owl,.txt">
+          </label>
+          <button id="uploadOntologyButton" class="pill small-pill" type="button">Upload Ontology</button>
+        </section>
 
-      <div class="tab-panel active" id="defaultSetup">
-        <div class="setup-grid">
-          <div>
-            <h2>S-XAI Store</h2>
-            <p>Default datastore: <strong>S-XAI</strong></p>
-          </div>
-          <div>
-            <h2>Knowledge Graph</h2>
-            <p>Default ontology and Datalog rules load when the page opens.</p>
-          </div>
-          <div>
-            <h2>Keras Models</h2>
-            <p>Ned-2, IRB 1200, and IRB 2400 use the bundled models.</p>
-          </div>
-        </div>
-      </div>
+        <section class="resource-card">
+          <h2>Upload your Datalog rule</h2>
+          <label class="file-row">
+            <span>DLOG, TXT</span>
+            <input id="rulesFile" type="file" accept=".dlog,.txt">
+          </label>
+          <button id="uploadRulesButton" class="pill small-pill" type="button">Upload Rule</button>
+        </section>
 
-      <div class="tab-panel" id="ontologySetup" hidden>
-        <label class="file-row">
-          <span>Ontology TTL</span>
-          <input id="ontologyFile" type="file" accept=".ttl,.rdf,.owl,.txt">
-        </label>
-        <button id="uploadOntologyButton" class="pill small-pill" type="button">Upload Ontology</button>
-      </div>
-
-      <div class="tab-panel" id="rulesSetup" hidden>
-        <label class="file-row">
-          <span>Datalog Rules</span>
-          <input id="rulesFile" type="file" accept=".dlog,.txt">
-        </label>
-        <button id="uploadRulesButton" class="pill small-pill" type="button">Upload Rules</button>
-      </div>
-
-      <div class="tab-panel" id="modelsSetup" hidden>
-        <div class="model-upload-grid">
+        <section class="resource-card">
+          <h2>Upload your ML models as Keras</h2>
           <label class="file-row">
             <span>Ned-2 model</span>
             <input id="modelNed2File" type="file" accept=".keras">
@@ -87,15 +67,16 @@
             <span>IRB 1200 model</span>
             <input id="modelIrb1200File" type="file" accept=".keras">
           </label>
-        </div>
-        <button id="uploadModelsButton" class="pill small-pill" type="button">Upload Models</button>
-        <pre id="modelStatus" class="model-status">Bundled models are loaded by Flask.</pre>
+          <button id="uploadModelsButton" class="pill small-pill" type="button">Upload Keras Models</button>
+          <pre id="modelStatus" class="model-status">Bundled Keras models are loaded by Flask.</pre>
+        </section>
       </div>
     </section>
 
     <section class="task-panel" id="taskPanel">
+      <label class="task-label" for="xyzInput">Add XYZ Cartesian coordinates for the new task:</label>
       <div class="input-shell">
-        <input id="xyzInput" autocomplete="off" placeholder="Enter comma separated XYZ coordinates">
+        <input id="xyzInput" autocomplete="off" placeholder="X, Y, Z">
         <button id="clearButton" class="clear-button" type="button" aria-label="Clear">x</button>
       </div>
 
@@ -166,9 +147,15 @@
   <dialog id="resultDialog" class="result-dialog">
     <div class="result-content">
       <p class="intro">
-        Based on Cartesian Coordinates X, Y, Z for a new task, the robot operational capability results are following:
+        Based on Cartesian Coordinates X, Y, Z for a new task, the robot operational capabilities are following:
       </p>
       <div id="resultText" class="result-text"></div>
+      <p class="result-note">
+        Note: once you execute, these values will be updated in the Knowledge Graph for the further reasoning process.
+      </p>
+      <p class="result-note">
+        If you want to add a hypothetical value for counterfactual explanation, press the Simulated Value button.
+      </p>
       <section id="simulationPanel" class="simulation-panel" hidden>
         <div class="simulation-grid" id="simulationGrid"></div>
         <div class="simulation-actions">

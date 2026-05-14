@@ -155,7 +155,7 @@ function formatResults(modelOutputs) {
       return `${robotDisplayName[robot]}:
   Repeatability Capability Value (mm): ${formatValue(result.repeatability)}
   Precision Capability Value (mm): ${formatValue(result.precision)}
-  Source: ${result.source || "Model prediction"}`;
+  Source: ${result.source || "NN Model prediction"}`;
     })
     .filter(Boolean)
     .join("\n\n");
@@ -674,7 +674,7 @@ async function uploadKnowledgeBase() {
     statusText.textContent = error.message;
   } finally {
     uploadButton.disabled = false;
-    uploadButton.textContent = "Upload";
+    uploadButton.textContent = "Reload Defaults";
   }
 }
 
@@ -741,7 +741,7 @@ async function executePrediction() {
 
     lastResult = payload.data[0];
     lastResult.model_outputs.forEach((result) => {
-      result.source = "Model prediction";
+      result.source = "NN Model prediction";
     });
     simulatedMode = false;
     resultText.textContent = formatResults(lastResult.model_outputs);
