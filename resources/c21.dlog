@@ -1,0 +1,128 @@
+PREFIX RCO: <http://RCO.enit.fr/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+# Rule to assert the maximum repeatability capability value globally
+[RCO:maxRepeatabilityCapability, RCO:hasMaxCapabilityValue, ?maxCapability] :-
+    AGGREGATE(
+        [?Robot, RCO:hasCapability, ?Capability],
+        [?Capability, rdf:type, RCO:OperationalRepeatabilityCapability],
+        [?Capability, RCO:has_Measurement_Value, ?Value]
+        BIND MAX(xsd:decimal(?Value)) AS ?maxCapability
+    ).
+
+# Rule to assert the maximum precision capability value globally
+[RCO:maxPrecisionCapability, RCO:hasMaxCapabilityValue, ?maxCapability] :-
+    AGGREGATE(
+        [?Robot, RCO:hasCapability, ?Capability],
+        [?Capability, rdf:type, RCO:OperationalPrecisionCapability],
+        [?Capability, RCO:has_Measurement_Value, ?Value]
+        BIND MAX(xsd:decimal(?Value)) AS ?maxCapability
+    ).
+
+# Rule to assert the minimum repeatability capability value globally
+[RCO:minRepeatabilityCapability, RCO:hasMinCapabilityValue, ?minCapability] :-
+    AGGREGATE(
+        [?Robot, RCO:hasCapability, ?Capability],
+        [?Capability, rdf:type, RCO:OperationalRepeatabilityCapability],
+        [?Capability, RCO:has_Measurement_Value, ?Value]
+        BIND MIN(xsd:decimal(?Value)) AS ?minCapability
+    ).
+
+# Rule to assert the minimum precision capability value globally
+[RCO:minPrecisionCapability, RCO:hasMinCapabilityValue, ?minCapability] :-
+    AGGREGATE(
+        [?Robot, RCO:hasCapability, ?Capability],
+        [?Capability, rdf:type, RCO:OperationalPrecisionCapability],
+        [?Capability, RCO:has_Measurement_Value, ?Value]
+        BIND MIN(xsd:decimal(?Value)) AS ?minCapability
+    ).
+
+# Classify the robot with the minimum repeatability capability as Best Suitable due to Repeatability
+[?Robot, rdf:type, RCO:BestSuitableDueToRepeatability] :-
+    [?Robot, RCO:hasCapability, ?Capability],
+    [?Capability, rdf:type, RCO:OperationalRepeatabilityCapability],
+    [?Capability, RCO:has_Measurement_Value, ?Value],
+    [RCO:minRepeatabilityCapability, RCO:hasMinCapabilityValue, ?minValue],
+    FILTER(xsd:decimal(?Value) = xsd:decimal(?minValue)).
+
+    
+# Classify the robot with the maximum precision capability as Best Suitable due to Precision
+[?Robot, rdf:type, RCO:BestSuitableDueToPrecision] :-
+    [?Robot, RCO:hasCapability, ?Capability],
+    [?Capability, rdf:type, RCO:OperationalPrecisionCapability],
+    [?Capability, RCO:has_Measurement_Value, ?Value],
+    [RCO:maxPrecisionCapability, RCO:hasMaxCapabilityValue, ?maxValue],
+    FILTER(xsd:decimal(?Value) = xsd:decimal(?maxValue)).
+
+# Classify the robot with the maximum repeatability capability as Least Suitable due to Repeatability
+[?Robot, rdf:type, RCO:LeastSuitableDueToRepeatability] :-
+    [?Robot, RCO:hasCapability, ?Capability],
+    [?Capability, rdf:type, RCO:OperationalRepeatabilityCapability],
+    [?Capability, RCO:has_Measurement_Value, ?Value],
+    [RCO:maxRepeatabilityCapability, RCO:hasMaxCapabilityValue, ?maxValue],
+    FILTER(xsd:decimal(?Value) = xsd:decimal(?maxValue)).
+
+# Classify the robot with the minimum precision capability as Least Suitable due to Precision
+[?Robot, rdf:type, RCO:LeastSuitableDueToPrecision] :-
+    [?Robot, RCO:hasCapability, ?Capability],
+    [?Capability, rdf:type, RCO:OperationalPrecisionCapability],
+    [?Capability, RCO:has_Measurement_Value, ?Value],
+    [RCO:minPrecisionCapability, RCO:hasMinCapabilityValue, ?minValue],
+    FILTER(xsd:decimal(?Value) = xsd:decimal(?minValue)).
+
+
+# Classify the robot as the overall Best Robot if it is best in both repeatability and precision
+[?Robot, rdf:type, RCO:BestRobot] :-
+    [?Robot, rdf:type, RCO:BestSuitableDueToRepeatability],
+    [?Robot, rdf:type, RCO:BestSuitableDueToPrecision].
+
+
+# Classify the robot as the overall Worst Robot if it is least suitable in both repeatability and precision
+[?Robot, rdf:type, RCO:WorstRobot] :-
+    [?Robot, rdf:type, RCO:LeastSuitableDueToRepeatability],
+    [?Robot, rdf:type, RCO:LeastSuitableDueToPrecision].
+
+
+# Calculate the maximum precision value among robots with the best repeatability
+[RCO:maxPrecisionAmongBestRepeatability, RCO:hasMaxCapabilityValue, ?maxOtherPrecision] :-
+    AGGREGATE(
+        [?Robot, RCO:hasCapability, ?Capability],
+        [?Robot, rdf:type, RCO:BestSuitableDueToRepeatability],
+        [?Capability, rdf:type, RCO:OperationalPrecisionCapability],
+        [?Capability, RCO:has_Measurement_Value, ?Value]
+        BIND MAX(xsd:decimal(?Value)) AS ?maxOtherPrecision
+    ).
+
+# Calculate theMinimum Repeatability Among Best Precision:
+[RCO:minRepeatabilityAmongBestPrecision, RCO:hasMinCapabilityValue, ?minOtherRepeatability] :-
+    AGGREGATE(
+        [?Robot, RCO:hasCapability, ?Capability],
+        [?Robot, rdf:type, RCO:BestSuitableDueToPrecision],
+        [?Capability, rdf:type, RCO:OperationalRepeatabilityCapability],
+        [?Capability, RCO:has_Measurement_Value, ?Value]
+        BIND MIN(xsd:decimal(?Value)) AS ?minOtherRepeatability
+    ).
+
+# Classify a robot as Optimal if it matches either the max precision among best in repeatability or max repeatability among best in precision
+[?Robot, rdf:type, RCO:OptimalRobot] :-
+    [?Robot, rdf:type, RCO:BestSuitableDueToRepeatability],
+    [RCO:maxPrecisionAmongBestRepeatability, RCO:hasMaxCapabilityValue, ?maxOtherPrecision],
+    [?Robot, RCO:hasCapability, ?PrecisionCapability],
+    [?PrecisionCapability, rdf:type, RCO:OperationalPrecisionCapability],
+    [?PrecisionCapability, RCO:has_Measurement_Value, ?PrecisionValue],
+    FILTER(xsd:decimal(?PrecisionValue) = ?maxOtherPrecision).
+	
+# Classify a robot as Optimal if it matches either the max precision among best in repeatability or min repeatability among best in precision
+[?Robot, rdf:type, RCO:OptimalRobot] :-
+    [?Robot, rdf:type, RCO:BestSuitableDueToPrecision],
+    [RCO:minRepeatabilityAmongBestPrecision, RCO:hasMinCapabilityValue, ?minOtherRepeatability],
+    [?Robot, RCO:hasCapability, ?RepeatabilityCapability],
+    [?RepeatabilityCapability, rdf:type, RCO:OperationalRepeatabilityCapability],
+    [?RepeatabilityCapability, RCO:has_Measurement_Value, ?RepeatabilityValue],
+    FILTER(xsd:decimal(?RepeatabilityValue) = ?minOtherRepeatability).
+
+	
+	
+	
+	
+	

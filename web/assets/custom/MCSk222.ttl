@@ -1,0 +1,327 @@
+@prefix : <http://www.semanticweb.org/owl/owlapi/turtle#> .
+@prefix RCO: <http://RCO.enit.fr/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.semanticweb.org/owl/owlapi/turtle#> .
+
+<http://RCO.enit.fr/> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://RCO.enit.fr/has_Measurement_Value
+RCO:has_Measurement_Value rdf:type owl:AnnotationProperty .
+
+
+###  http://www.semanticweb.org/owl/owlapi/turtle#hasValue
+:hasValue rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://RCO.enit.fr/hasCapability
+RCO:hasCapability rdf:type owl:ObjectProperty ;
+                  rdfs:label "has Capability" .
+
+
+###  http://RCO.enit.fr/hasMeasurementUniLlabel
+RCO:hasMeasurementUniLlabel rdf:type owl:ObjectProperty ;
+                            rdfs:label "has measurement unit label" .
+
+
+###  http://RCO.enit.fr/isMeasurementof
+RCO:isMeasurementof rdf:type owl:ObjectProperty ;
+                    rdfs:label "is measurement of" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://RCO.enit.fr/AdvertisedCapability
+RCO:AdvertisedCapability rdf:type owl:Class ;
+                         rdfs:subClassOf RCO:Capability ;
+                         rdfs:label "Advertised Capability" .
+
+
+###  http://RCO.enit.fr/AdvertisedPrecisionCapability
+RCO:AdvertisedPrecisionCapability rdf:type owl:Class ;
+                                  rdfs:subClassOf RCO:AdvertisedCapability .
+
+
+###  http://RCO.enit.fr/AdvertisedRepeatabilityCapability
+RCO:AdvertisedRepeatabilityCapability rdf:type owl:Class ;
+                                      rdfs:subClassOf RCO:AdvertisedCapability .
+
+
+###  http://RCO.enit.fr/BestSuitableRobot
+RCO:BestSuitableRobot rdf:type owl:Class ;
+                      rdfs:subClassOf RCO:robot .
+
+
+###  http://RCO.enit.fr/Capability
+RCO:Capability rdf:type owl:Class .
+
+
+###  http://RCO.enit.fr/HandlingAndTransportationEquipment
+RCO:HandlingAndTransportationEquipment rdf:type owl:Class ;
+                                       rdfs:subClassOf <http://infoneer.txstate.edu/ontology/MSDL__0000026> .
+
+
+###  http://RCO.enit.fr/LeastSuitableRobot
+RCO:LeastSuitableRobot rdf:type owl:Class ;
+                       rdfs:subClassOf RCO:robot .
+
+
+###  http://RCO.enit.fr/OperationalCapability
+RCO:OperationalCapability rdf:type owl:Class ;
+                          rdfs:subClassOf RCO:Capability ;
+                          rdfs:label "Operational Capability" .
+
+
+###  http://RCO.enit.fr/OperationalPrecisionCapability
+RCO:OperationalPrecisionCapability rdf:type owl:Class ;
+                                   rdfs:subClassOf RCO:OperationalCapability .
+
+
+###  http://RCO.enit.fr/OperationalRepeatabilityCapability
+RCO:OperationalRepeatabilityCapability rdf:type owl:Class ;
+                                       rdfs:subClassOf RCO:OperationalCapability .
+
+
+###  http://RCO.enit.fr/lengthMeasurementDatum
+RCO:lengthMeasurementDatum rdf:type owl:Class ;
+                           rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000109> .
+
+
+###  http://RCO.enit.fr/robot
+RCO:robot rdf:type owl:Class ;
+          rdfs:subClassOf RCO:HandlingAndTransportationEquipment ;
+          rdfs:label "Robot" .
+
+
+###  http://infoneer.txstate.edu/ontology/MSDL_0000224
+<http://infoneer.txstate.edu/ontology/MSDL_0000224> rdf:type owl:Class ;
+                                                    rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000003> ;
+                                                    rdfs:label "width Unit" .
+
+
+###  http://infoneer.txstate.edu/ontology/MSDL_0000225
+<http://infoneer.txstate.edu/ontology/MSDL_0000225> rdf:type owl:Class ;
+                                                    rdfs:subClassOf <http://infoneer.txstate.edu/ontology/MSDL_0000224> ;
+                                                    rdfs:label "Unit" .
+
+
+###  http://infoneer.txstate.edu/ontology/MSDL__0000026
+<http://infoneer.txstate.edu/ontology/MSDL__0000026> rdf:type owl:Class ;
+                                                     rdfs:label "Equipment" .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000003
+<http://purl.obolibrary.org/obo/IAO_0000003> rdf:type owl:Class ;
+                                             rdfs:label "measurement unit label" .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000032
+<http://purl.obolibrary.org/obo/IAO_0000032> rdf:type owl:Class .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000109
+<http://purl.obolibrary.org/obo/IAO_0000109> rdf:type owl:Class .
+
+
+#################################################################
+#    Individuals
+#################################################################
+
+###  http://RCO.enit.fr/AdvertisedPrecisionCapability1
+RCO:AdvertisedPrecisionCapability1 rdf:type owl:NamedIndividual ,
+                                            RCO:AdvertisedPrecisionCapability ;
+                                   RCO:hasMeasurementUniLlabel RCO:inch ;
+                                   RCO:has_Measurement_Value 0.5 .
+
+
+###  http://RCO.enit.fr/AdvertisedPrecisionCapability2
+RCO:AdvertisedPrecisionCapability2 rdf:type owl:NamedIndividual ,
+                                            RCO:AdvertisedPrecisionCapability ;
+                                   RCO:hasMeasurementUniLlabel RCO:inch ;
+                                   RCO:has_Measurement_Value 0.02 .
+
+
+###  http://RCO.enit.fr/AdvertisedPrecisionCapability3
+RCO:AdvertisedPrecisionCapability3 rdf:type owl:NamedIndividual ,
+                                            RCO:AdvertisedPrecisionCapability ;
+                                   RCO:hasMeasurementUniLlabel RCO:inch ;
+                                   RCO:has_Measurement_Value 0.02 .
+
+
+###  http://RCO.enit.fr/AdvertisedPrecisionCapabilityMD1
+RCO:AdvertisedPrecisionCapabilityMD1 rdf:type owl:NamedIndividual ,
+                                              RCO:lengthMeasurementDatum ;
+                                     RCO:isMeasurementof RCO:AdvertisedPrecisionCapability1 .
+
+
+###  http://RCO.enit.fr/AdvertisedPrecisionCapabilityMD2
+RCO:AdvertisedPrecisionCapabilityMD2 rdf:type owl:NamedIndividual ,
+                                              RCO:lengthMeasurementDatum ;
+                                     RCO:isMeasurementof RCO:AdvertisedPrecisionCapability2 .
+
+
+###  http://RCO.enit.fr/AdvertisedPrecisionCapabilityMD3
+RCO:AdvertisedPrecisionCapabilityMD3 rdf:type owl:NamedIndividual ,
+                                              RCO:lengthMeasurementDatum .
+
+
+###  http://RCO.enit.fr/AdvertisedRepeatabilityCapability1
+RCO:AdvertisedRepeatabilityCapability1 rdf:type owl:NamedIndividual ,
+                                                RCO:AdvertisedRepeatabilityCapability ;
+                                       RCO:hasMeasurementUniLlabel RCO:inch ;
+                                       RCO:has_Measurement_Value 0.5 .
+
+
+###  http://RCO.enit.fr/AdvertisedRepeatabilityCapability2
+RCO:AdvertisedRepeatabilityCapability2 rdf:type owl:NamedIndividual ,
+                                                RCO:AdvertisedRepeatabilityCapability ;
+                                       RCO:hasMeasurementUniLlabel RCO:inch ;
+                                       RCO:has_Measurement_Value 0.01 .
+
+
+###  http://RCO.enit.fr/AdvertisedRepeatabilityCapability3
+RCO:AdvertisedRepeatabilityCapability3 rdf:type owl:NamedIndividual ,
+                                                RCO:AdvertisedRepeatabilityCapability ;
+                                       RCO:hasMeasurementUniLlabel RCO:inch ;
+                                       RCO:has_Measurement_Value 0.03 .
+
+
+###  http://RCO.enit.fr/AdvertisedRepeatabilityCapabilityMD1
+RCO:AdvertisedRepeatabilityCapabilityMD1 rdf:type owl:NamedIndividual ,
+                                                  RCO:lengthMeasurementDatum ;
+                                         RCO:isMeasurementof RCO:AdvertisedRepeatabilityCapability1 .
+
+
+###  http://RCO.enit.fr/AdvertisedRepeatabilityCapabilityMD2
+RCO:AdvertisedRepeatabilityCapabilityMD2 rdf:type owl:NamedIndividual ,
+                                                  RCO:lengthMeasurementDatum ;
+                                         RCO:isMeasurementof RCO:AdvertisedPrecisionCapability2 .
+
+
+###  http://RCO.enit.fr/AdvertisedRepeatabilityCapabilityMD3
+RCO:AdvertisedRepeatabilityCapabilityMD3 rdf:type owl:NamedIndividual ,
+                                                  RCO:lengthMeasurementDatum ;
+                                         RCO:isMeasurementof RCO:AdvertisedPrecisionCapability3 .
+
+
+###  http://RCO.enit.fr/IRB-1200
+RCO:IRB-1200 rdf:type owl:NamedIndividual ,
+                      RCO:robot ;
+             RCO:hasCapability RCO:AdvertisedPrecisionCapability2 ,
+                               RCO:AdvertisedRepeatabilityCapability2 ,
+                               RCO:OperationalPrecisionCapability2 ,
+                               RCO:OperationalRepeatabilityCapability2 .
+
+
+###  http://RCO.enit.fr/IRB-2400
+RCO:IRB-2400 rdf:type owl:NamedIndividual ,
+                      RCO:robot ;
+             RCO:hasCapability RCO:OperationalPrecisionCapability3 ,
+                               RCO:OperationalRepeatabilityCapability3 .
+
+
+###  http://RCO.enit.fr/Ned-2
+RCO:Ned-2 rdf:type owl:NamedIndividual ,
+                   RCO:robot ;
+          RCO:hasCapability RCO:AdvertisedPrecisionCapability1 ,
+                            RCO:AdvertisedRepeatabilityCapability1 ,
+                            RCO:OperationalPrecisionCapability1 ,
+                            RCO:OperationalRepeatabilityCapability1 .
+
+
+###  http://RCO.enit.fr/OperationalPrecisionCapability1
+RCO:OperationalPrecisionCapability1 rdf:type owl:NamedIndividual ,
+                                             RCO:OperationalPrecisionCapability ;
+                                    RCO:hasMeasurementUniLlabel RCO:inch ;
+                                    RCO:has_Measurement_Value 0.09 .
+
+
+###  http://RCO.enit.fr/OperationalPrecisionCapability2
+RCO:OperationalPrecisionCapability2 rdf:type owl:NamedIndividual ,
+                                             RCO:OperationalPrecisionCapability ;
+                                    RCO:hasMeasurementUniLlabel RCO:inch ;
+                                    RCO:has_Measurement_Value 0.07 .
+
+
+###  http://RCO.enit.fr/OperationalPrecisionCapability3
+RCO:OperationalPrecisionCapability3 rdf:type owl:NamedIndividual ,
+                                             RCO:OperationalPrecisionCapability ;
+                                    RCO:hasMeasurementUniLlabel RCO:inch ;
+                                    RCO:has_Measurement_Value 0.04 .
+
+
+###  http://RCO.enit.fr/OperationalPrecisionCapabilityMD1
+RCO:OperationalPrecisionCapabilityMD1 rdf:type owl:NamedIndividual ,
+                                               RCO:lengthMeasurementDatum ;
+                                      RCO:isMeasurementof RCO:OperationalPrecisionCapability1 .
+
+
+###  http://RCO.enit.fr/OperationalPrecisionCapabilityMD2
+RCO:OperationalPrecisionCapabilityMD2 rdf:type owl:NamedIndividual ,
+                                               RCO:lengthMeasurementDatum ;
+                                      RCO:isMeasurementof RCO:OperationalPrecisionCapability2 .
+
+
+###  http://RCO.enit.fr/OperationalPrecisionCapabilityMD3
+RCO:OperationalPrecisionCapabilityMD3 rdf:type owl:NamedIndividual ,
+                                               RCO:lengthMeasurementDatum ;
+                                      RCO:isMeasurementof RCO:OperationalPrecisionCapability3 .
+
+
+###  http://RCO.enit.fr/OperationalRepeatabilityCapability1
+RCO:OperationalRepeatabilityCapability1 rdf:type owl:NamedIndividual ,
+                                                 RCO:OperationalRepeatabilityCapability ;
+                                        RCO:hasMeasurementUniLlabel RCO:inch ;
+                                        RCO:has_Measurement_Value 0.01 .
+
+
+###  http://RCO.enit.fr/OperationalRepeatabilityCapability2
+RCO:OperationalRepeatabilityCapability2 rdf:type owl:NamedIndividual ,
+                                                 RCO:OperationalRepeatabilityCapability ;
+                                        RCO:hasMeasurementUniLlabel RCO:inch ;
+                                        RCO:has_Measurement_Value 0.04 .
+
+
+###  http://RCO.enit.fr/OperationalRepeatabilityCapability3
+RCO:OperationalRepeatabilityCapability3 rdf:type owl:NamedIndividual ,
+                                                 RCO:OperationalRepeatabilityCapability ;
+                                        RCO:hasMeasurementUniLlabel RCO:inch ;
+                                        RCO:has_Measurement_Value 0.04 .
+
+
+###  http://RCO.enit.fr/OperationalRepeatabilityCapabilityMD1
+RCO:OperationalRepeatabilityCapabilityMD1 rdf:type owl:NamedIndividual ,
+                                                   RCO:lengthMeasurementDatum ;
+                                          RCO:isMeasurementof RCO:OperationalRepeatabilityCapability1 .
+
+
+###  http://RCO.enit.fr/OperationalRepeatabilityCapabilityMD2
+RCO:OperationalRepeatabilityCapabilityMD2 rdf:type owl:NamedIndividual ,
+                                                   RCO:lengthMeasurementDatum ;
+                                          RCO:isMeasurementof RCO:OperationalRepeatabilityCapability2 .
+
+
+###  http://RCO.enit.fr/OperationalRepeatabilityCapabilityMD3
+RCO:OperationalRepeatabilityCapabilityMD3 rdf:type owl:NamedIndividual ,
+                                                   RCO:lengthMeasurementDatum ;
+                                          RCO:isMeasurementof RCO:OperationalRepeatabilityCapability3 .
+
+
+###  http://RCO.enit.fr/inch
+RCO:inch rdf:type owl:NamedIndividual .
+
+
+###  Generated by the OWL API (version 4.5.26.2023-07-17T20:34:13Z) https://github.com/owlcs/owlapi

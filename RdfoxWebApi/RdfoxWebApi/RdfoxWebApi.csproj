@@ -1,0 +1,170 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="obj\**\*.cs" />
+    <Compile Remove="build-obj\**\*.cs" />
+    <Compile Remove="bin\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="AngleSharp">
+      <HintPath>bin\Debug\net8.0\AngleSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="dotNetRdf">
+      <HintPath>bin\Debug\net8.0\dotNetRdf.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="dotNetRdf.Inferencing">
+      <HintPath>bin\Debug\net8.0\dotNetRdf.Inferencing.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="dotNetRdf.Ontology">
+      <HintPath>bin\Debug\net8.0\dotNetRdf.Ontology.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="dotNetRdf.Query.FullText">
+      <HintPath>bin\Debug\net8.0\dotNetRdf.Query.FullText.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="dotNetRdf.Query.Spin">
+      <HintPath>bin\Debug\net8.0\dotNetRdf.Query.Spin.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="dotNetRdf.Skos">
+      <HintPath>bin\Debug\net8.0\dotNetRdf.Skos.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Google.Protobuf">
+      <HintPath>bin\Debug\net8.0\Google.Protobuf.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="HDF.PInvoke.1.10">
+      <HintPath>bin\Debug\net8.0\HDF.PInvoke.1.10.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="HDF5CSharp">
+      <HintPath>bin\Debug\net8.0\HDF5CSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="HtmlAgilityPack">
+      <HintPath>bin\Debug\net8.0\HtmlAgilityPack.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="ICSharpCode.SharpZipLib">
+      <HintPath>bin\Debug\net8.0\ICSharpCode.SharpZipLib.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="J2N">
+      <HintPath>bin\Debug\net8.0\J2N.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Keras">
+      <HintPath>bin\Debug\net8.0\Keras.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lucene.Net.Analysis.Common">
+      <HintPath>bin\Debug\net8.0\Lucene.Net.Analysis.Common.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lucene.Net">
+      <HintPath>bin\Debug\net8.0\Lucene.Net.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lucene.Net.Queries">
+      <HintPath>bin\Debug\net8.0\Lucene.Net.Queries.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lucene.Net.QueryParser">
+      <HintPath>bin\Debug\net8.0\Lucene.Net.QueryParser.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Lucene.Net.Sandbox">
+      <HintPath>bin\Debug\net8.0\Lucene.Net.Sandbox.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="MethodBoundaryAspect">
+      <HintPath>bin\Debug\net8.0\MethodBoundaryAspect.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces">
+      <HintPath>bin\Debug\net8.0\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>bin\Debug\net8.0\Newtonsoft.Json.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Numpy.Bare">
+      <HintPath>bin\Debug\net8.0\Numpy.Bare.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OneOf">
+      <HintPath>bin\Debug\net8.0\OneOf.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OpenAI_API">
+      <HintPath>bin\Debug\net8.0\OpenAI_API.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Protobuf.Text">
+      <HintPath>bin\Debug\net8.0\Protobuf.Text.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="PureHDF">
+      <HintPath>bin\Debug\net8.0\PureHDF.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Python.Runtime">
+      <HintPath>bin\Debug\net8.0\Python.Runtime.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Razorvine.Pickle">
+      <HintPath>bin\Debug\net8.0\Razorvine.Pickle.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Serilog">
+      <HintPath>bin\Debug\net8.0\Serilog.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Serilog.Sinks.Console">
+      <HintPath>bin\Debug\net8.0\Serilog.Sinks.Console.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="System.Configuration.ConfigurationManager">
+      <HintPath>bin\Debug\net8.0\System.Configuration.ConfigurationManager.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="System.Resources.Extensions">
+      <HintPath>bin\Debug\net8.0\System.Resources.Extensions.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.ProtectedData">
+      <HintPath>bin\Debug\net8.0\System.Security.Cryptography.ProtectedData.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Tensorflow.Binding">
+      <HintPath>bin\Debug\net8.0\Tensorflow.Binding.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Tensorflow.Keras">
+      <HintPath>bin\Debug\net8.0\Tensorflow.Keras.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="VDS.Common">
+      <HintPath>bin\Debug\net8.0\VDS.Common.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,31 @@
+# Secrets and local runtime state
+license/*.lic
+config.local.ps1
+rdfox-server/
+appdata/
+.dotnet/
+.nuget-packages/
+
+# Build outputs
+**/obj/
+**/build-obj/
+**/verify-obj/
+verify-build/
+
+# Keep the existing local DLL bundle used by this recovered project, but avoid
+# generated intermediates inside it.
+**/bin/**/build-obj/
+
+# RDFox files not needed to run this application and too large for GitHub.
+tools/RDFox-win64-x86_64-7.5b/lib/libRDFox-static.lib
+tools/RDFox-win64-x86_64-7.5b/examples/
+tools/RDFox-win64-x86_64-7.5b/include/
+
+# Usual local noise
+.vs/
+.vscode/
+*.user
+*.suo
+*.log
+__pycache__/
+*.pyc

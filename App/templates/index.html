@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Model Prediction</title>
+</head>
+<body>
+    <h1>Enter data for prediction</h1>
+    <form method="post" action="/">
+        {% for i in range(12) %}
+        <input type="number" name="data{{ i+1 }}" placeholder="Input {{ i+1 }}" step="any" required>
+        {% endfor %}
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if result %}
+    <h2>Prediction Results</h2>
+    <p>Model 1: {{ result.predictions[0] }}</p>
+    <p>Model 2: {{ result.predictions[1] }}</p>
+    <p>Model 3: {{ result.predictions[2] }}</p>
+    <p>Model 4: {{ result.predictions[3] }}</p>
+    <p>Best Model: {{ result.best_model }} with a prediction of {{ result.best_value }}</p>
+    {% endif %}
+</body>
+</html>

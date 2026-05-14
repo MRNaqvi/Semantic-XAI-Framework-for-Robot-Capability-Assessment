@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Robot Operational Capability</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <img class="logo" src="assets/custom/data-flow.png" alt="Data flow">
+    <button class="nav-item active" title="Run Model" aria-label="Run Model">
+      <span>&gt;</span>
+      <strong>Run Model</strong>
+    </button>
+    <button class="nav-item" title="Facts" aria-label="Facts">
+      <span>?</span>
+      <strong>Facts</strong>
+    </button>
+    <button class="nav-item" title="Rule Engine" aria-label="Rule Engine">
+      <span>=</span>
+      <strong>Rule Engine</strong>
+    </button>
+  </aside>
+
+  <main class="workspace">
+    <header class="topbar">
+      <label class="datastore">
+        <span>Datastore</span>
+        <input id="datastore" value="S-XAI">
+      </label>
+      <button class="blue-button" id="uploadButton" type="button">Upload</button>
+    </header>
+
+    <section class="setup-panel">
+      <div class="tabs" role="tablist" aria-label="Knowledge base setup">
+        <button class="tab-button active" type="button" data-tab="defaultSetup">Default Setup</button>
+        <button class="tab-button" type="button" data-tab="ontologySetup">Ontology</button>
+        <button class="tab-button" type="button" data-tab="rulesSetup">Rules</button>
+        <button class="tab-button" type="button" data-tab="modelsSetup">Models</button>
+      </div>
+
+      <div class="tab-panel active" id="defaultSetup">
+        <div class="setup-grid">
+          <div>
+            <h2>S-XAI Store</h2>
+            <p>Default datastore: <strong>S-XAI</strong></p>
+          </div>
+          <div>
+            <h2>Knowledge Graph</h2>
+            <p>Default ontology and Datalog rules load when the page opens.</p>
+          </div>
+          <div>
+            <h2>Keras Models</h2>
+            <p>Ned-2, IRB 1200, and IRB 2400 use the bundled models.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="ontologySetup" hidden>
+        <label class="file-row">
+          <span>Ontology TTL</span>
+          <input id="ontologyFile" type="file" accept=".ttl,.rdf,.owl,.txt">
+        </label>
+        <button id="uploadOntologyButton" class="pill small-pill" type="button">Upload Ontology</button>
+      </div>
+
+      <div class="tab-panel" id="rulesSetup" hidden>
+        <label class="file-row">
+          <span>Datalog Rules</span>
+          <input id="rulesFile" type="file" accept=".dlog,.txt">
+        </label>
+        <button id="uploadRulesButton" class="pill small-pill" type="button">Upload Rules</button>
+      </div>
+
+      <div class="tab-panel" id="modelsSetup" hidden>
+        <div class="model-upload-grid">
+          <label class="file-row">
+            <span>Ned-2 model</span>
+            <input id="modelNed2File" type="file" accept=".keras">
+          </label>
+          <label class="file-row">
+            <span>IRB 2400 model</span>
+            <input id="modelIrb2400File" type="file" accept=".keras">
+          </label>
+          <label class="file-row">
+            <span>IRB 1200 model</span>
+            <input id="modelIrb1200File" type="file" accept=".keras">
+          </label>
+        </div>
+        <button id="uploadModelsButton" class="pill small-pill" type="button">Upload Models</button>
+        <pre id="modelStatus" class="model-status">Bundled models are loaded by Flask.</pre>
+      </div>
+    </section>
+
+    <section class="task-panel" id="taskPanel">
+      <div class="input-shell">
+        <input id="xyzInput" autocomplete="off" placeholder="Enter comma separated XYZ coordinates">
+        <button id="clearButton" class="clear-button" type="button" aria-label="Clear">x</button>
+      </div>
+
+      <div class="actions">
+        <button id="addButton" class="pill" type="button">Add XYZ</button>
+        <button id="executeButton" class="pill" type="button">Execute</button>
+      </div>
+
+      <p id="statusText" class="status-text"></p>
+    </section>
+
+    <section class="facts-workspace" id="factsWorkspace">
+      <div class="section-head">
+        <h1>Facts and Explanations</h1>
+        <div class="section-actions">
+          <button id="refreshFactsButton" class="pill small-pill" type="button">Refresh Facts</button>
+          <button id="exportReportButton" class="pill small-pill" type="button">Export Report</button>
+        </div>
+      </div>
+
+      <div class="source-strip" id="sourceStrip">
+        <span>Ontology original value</span>
+        <span>Model prediction</span>
+        <span>User simulated value</span>
+      </div>
+
+      <div class="comparison-panel">
+        <h2>Counterfactual Comparison</h2>
+        <div class="comparison-grid">
+          <div>
+            <h3>Before Simulation</h3>
+            <pre id="beforeFacts">No facts loaded.</pre>
+          </div>
+          <div>
+            <h3>After Simulation</h3>
+            <pre id="afterFacts">No facts loaded.</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="facts-layout">
+        <section class="facts-panel">
+          <h2>Inferred Facts</h2>
+          <div id="factsList" class="facts-list"></div>
+        </section>
+
+        <section class="graph-panel">
+          <h2>Graph Explanation View</h2>
+          <svg id="factGraph" viewBox="0 0 760 360" role="img" aria-label="Fact explanation graph"></svg>
+          <div id="tracePanel" class="trace-panel"></div>
+        </section>
+      </div>
+
+      <div class="lower-layout">
+        <section class="nl-panel">
+          <h2>Natural Language Explanation</h2>
+          <pre id="nlExplanation">Select a fact and click Explain. Add your OpenAI API key to get natural language explanations.</pre>
+        </section>
+
+        <section class="rule-panel">
+          <h2>Datalog Rule Explanation</h2>
+          <div id="ruleList" class="rule-list"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="resultDialog" class="result-dialog">
+    <div class="result-content">
+      <p class="intro">
+        Based on Cartesian Coordinates X, Y, Z for a new task, the robot operational capability results are following:
+      </p>
+      <div id="resultText" class="result-text"></div>
+      <section id="simulationPanel" class="simulation-panel" hidden>
+        <div class="simulation-grid" id="simulationGrid"></div>
+        <div class="simulation-actions">
+          <button id="applySimulationButton" class="modal-button" type="button">Apply Simulated Values</button>
+        </div>
+      </section>
+      <div class="dialog-actions">
+        <button id="simulateButton" class="modal-button" type="button">Simulated Value</button>
+        <button id="submitButton" class="modal-button" type="button">Submit</button>
+        <button id="okButton" class="ok-button" type="button">OK</button>
+        <button id="cancelButton" class="modal-button" type="button">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

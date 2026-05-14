@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Prediction Result</title>
+</head>
+<body>
+    <h1>Prediction Results</h1>
+    <p>Model 1 Prediction: {{ result.predictions[0] }}</p>
+    <p>Model 2 Prediction: {{ result.predictions[1] }}</p>
+    <p>Model 3 Prediction: {{ result.predictions[2] }}</p>
+    <p>Model 4 Prediction: {{ result.predictions[3] }}</p>
+    <p><strong>Best Model: {{ result.best_model }} with prediction {{ result.best_value }}</strong></p>
+    <a href="/">Try Again</a>
+</body>
+</html>
