@@ -23,7 +23,7 @@ body {
   margin: 0;
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 90px 1fr;
+  grid-template-columns: 190px 1fr;
   background: var(--bg);
   color: var(--text);
   font-family: Arial, Helvetica, sans-serif;
@@ -35,8 +35,8 @@ body {
   background: var(--rail);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 32px;
+  align-items: stretch;
+  gap: 14px;
 }
 
 .logo {
@@ -44,19 +44,24 @@ body {
   height: 50px;
   object-fit: contain;
   background: white;
+  align-self: center;
+  margin-bottom: 18px;
 }
 
 .nav-item {
-  width: 78px;
+  width: auto;
   min-height: 48px;
+  margin: 0 12px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  gap: 4px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: transparent;
   color: var(--muted);
-  cursor: default;
+  cursor: pointer;
+  text-align: left;
 }
 
 .nav-item span {
@@ -64,7 +69,8 @@ body {
 }
 
 .nav-item strong {
-  display: none;
+  display: inline;
+  font-size: 15px;
 }
 
 .nav-item.active {
@@ -130,15 +136,16 @@ body {
 }
 
 .blue-button {
-  height: 48px;
-  min-width: 152px;
+  height: 44px;
+  min-width: 132px;
   border: 0;
-  border-radius: 8px;
-  background: var(--blue);
-  color: white;
-  font-size: 17px;
+  border-radius: 24px;
+  background: var(--button);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: none;
 }
 
 .setup-panel {
