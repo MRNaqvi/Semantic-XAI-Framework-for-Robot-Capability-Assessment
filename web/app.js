@@ -33,6 +33,10 @@ const simulationPanel = document.querySelector("#simulationPanel");
 const simulationGrid = document.querySelector("#simulationGrid");
 const statusText = document.querySelector("#statusText");
 const taskPanel = document.querySelector("#taskPanel");
+const runPage = document.querySelector("#runPage");
+const explanationsPage = document.querySelector("#explanationsPage");
+const runPageButton = document.querySelector("#runPageButton");
+const explanationsPageButton = document.querySelector("#explanationsPageButton");
 const factsList = document.querySelector("#factsList");
 const factGraph = document.querySelector("#factGraph");
 const tracePanel = document.querySelector("#tracePanel");
@@ -58,6 +62,14 @@ let baselineFacts = [];
 let simulatedFacts = [];
 let selectedFact = null;
 let simulatedMode = false;
+
+function showPage(pageName) {
+  const showExplanations = pageName === "explanations";
+  runPage.hidden = showExplanations;
+  explanationsPage.hidden = !showExplanations;
+  runPageButton.classList.toggle("active", !showExplanations);
+  explanationsPageButton.classList.toggle("active", showExplanations);
+}
 
 const factTypes = [
   "RCO:BestSuitableDueToRepeatability",
@@ -822,6 +834,7 @@ async function submitOntologyUpdate() {
     closeDialog();
     statusText.textContent = "Operational capability values updated.";
     await refreshFacts(simulatedMode ? "after" : "before");
+    showPage("explanations");
   } catch (error) {
     statusText.textContent = error.message;
   } finally {
@@ -845,6 +858,8 @@ addButton.addEventListener("click", () => {
 });
 
 uploadButton.addEventListener("click", uploadKnowledgeBase);
+runPageButton.addEventListener("click", () => showPage("run"));
+explanationsPageButton.addEventListener("click", () => showPage("explanations"));
 executeButton.addEventListener("click", executePrediction);
 simulateButton.addEventListener("click", toggleSimulationPanel);
 applySimulationButton.addEventListener("click", applySimulationValues);
