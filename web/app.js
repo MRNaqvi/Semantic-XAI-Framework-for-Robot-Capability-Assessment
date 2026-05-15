@@ -337,7 +337,11 @@ function renderLimeResults(payload) {
 
       const summary = document.createElement("p");
       summary.className = "lime-summary";
-      summary.textContent = `${explanation.strongest_feature} has the strongest local influence for ${capability}.`;
+      summary.textContent = makeLimeInterpretation(
+        robotDisplayName[robotExplanation.model] || robotExplanation.model,
+        capability,
+        explanation
+      );
       section.appendChild(summary);
       card.appendChild(section);
     });
@@ -413,6 +417,27 @@ function makeInfluenceRows(explanation) {
     .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
 }
 
+function capabilityName(capability) {
+  return capability === "repeatability" ? "repeatability" : "precision";
+}
+
+function explainInfluenceDirection(weight, capability) {
+  const capabilityLabel = capabilityName(capability);
+  if (Math.abs(Number(weight || 0)) < 0.000001) {
+    return `has almost no local effect on the predicted ${capabilityLabel} value.`;
+  }
+
+  return Number(weight) > 0
+    ? `locally increases the predicted ${capabilityLabel} value when it increases near this task point.`
+    : `locally decreases the predicted ${capabilityLabel} value when it increases near this task point.`;
+}
+
+function makeLimeInterpretation(robot, capability, explanation) {
+  const strongest = explanation?.strongest_feature || "X";
+  const strongestWeight = Number(explanation?.feature_weights?.[strongest] || 0);
+  return `Near this Cartesian task point, ${robot} ${capabilityName(capability)} is most sensitive to ${strongest}. ${strongest} ${explainInfluenceDirection(strongestWeight, capability)}`;
+}
+
 function renderSelectedFactXai(fact = selectedFact) {
   if (!selectedFactXai) {
     return;
@@ -470,6 +495,11 @@ function renderSelectedFactXai(fact = selectedFact) {
     const source = document.createElement("p");
     source.textContent = `Source: ${modelResult.source || "NN Model prediction"}. Strongest local influence: ${explanation.strongest_feature}.`;
     card.appendChild(source);
+
+    const interpretation = document.createElement("p");
+    interpretation.className = "selected-xai-interpretation";
+    interpretation.textContent = makeLimeInterpretation(robot, capability, explanation);
+    card.appendChild(interpretation);
 
     const rows = document.createElement("ol");
     makeInfluenceRows(explanation).forEach((item) => {
@@ -1227,7 +1257,7 @@ async function explainFact(fact) {
   }
 }
 
-function limeCapabilityToText(robotExplanation, capability) {
+function limeCapabilityToText(robotExplanation, capability, robot) {
   const explanation = robotExplanation?.lime?.[capability];
   if (!explanation) {
     return "";
@@ -1241,6 +1271,7 @@ function limeCapabilityToText(robotExplanation, capability) {
   return [
     `  ${title} prediction: ${formatValue(explanation.prediction)}`,
     `  Strongest local influence: ${explanation.strongest_feature}`,
+    `  Interpretation: ${makeLimeInterpretation(robot, capability, explanation)}`,
     "  XYZ feature weights:",
     influences,
   ].join("\n");
@@ -1257,8 +1288,8 @@ function limeReportText() {
       const robot = robotDisplayName[robotExplanation.model] || robotExplanation.model;
       return [
         `${robot}:`,
-        limeCapabilityToText(robotExplanation, "repeatability"),
-        limeCapabilityToText(robotExplanation, "precision"),
+        limeCapabilityToText(robotExplanation, "repeatability", robot),
+        limeCapabilityToText(robotExplanation, "precision", robot),
       ].filter(Boolean).join("\n");
     })
     .join("\n\n");
@@ -1294,6 +1325,7 @@ function selectedFactXaiReportText() {
     lines.push(`${title} value: ${formatValue(modelResult[capability])}`);
     lines.push(`Source: ${modelResult.source || "NN Model prediction"}.`);
     lines.push(`Strongest local influence: ${explanation.strongest_feature}.`);
+    lines.push(`Interpretation: ${makeLimeInterpretation(shortName(selectedFact.robot), capability, explanation)}`);
     makeInfluenceRows(explanation).forEach((item) => {
       lines.push(`  ${item.feature}: ${formatWeight(item.weight)}`);
     });

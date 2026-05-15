@@ -1015,6 +1015,11 @@ body {
   color: var(--text);
 }
 
+.selected-xai-card .selected-xai-interpretation {
+  color: var(--text);
+  line-height: 1.35;
+}
+
 .selected-xai-card ol {
   margin: 0;
   padding-left: 20px;
