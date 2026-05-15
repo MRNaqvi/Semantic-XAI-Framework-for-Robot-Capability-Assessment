@@ -193,6 +193,13 @@
           <span><i class="legend-dot fact"></i>Selected reasoned fact</span>
           <span><i class="legend-line"></i>RDF predicate</span>
         </div>
+        <div class="graph-filters" aria-label="Whole graph filters">
+          <label><input type="checkbox" data-graph-filter="robot" checked> Robots</label>
+          <label><input type="checkbox" data-graph-filter="capability" checked> Capabilities</label>
+          <label><input type="checkbox" data-graph-filter="value" checked> Measurements</label>
+          <label><input type="checkbox" data-graph-filter="fact" checked> Reasoned Facts</label>
+          <label><input type="checkbox" id="selectedRobotOnlyFilter"> Selected Robot Only</label>
+        </div>
         <svg id="factGraph" viewBox="0 0 1100 420" role="img" aria-label="Fact explanation graph"></svg>
         <section id="graphDetails" class="graph-details" aria-live="polite">
           <h3>Node Details</h3>

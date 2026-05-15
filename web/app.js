@@ -66,6 +66,8 @@ const explanationTabs = Array.from(document.querySelectorAll(".explanation-tab")
 const explanationPanels = Array.from(document.querySelectorAll(".explanation-panel"));
 const selectedGraphButton = document.querySelector("#selectedGraphButton");
 const wholeGraphButton = document.querySelector("#wholeGraphButton");
+const graphFilterInputs = Array.from(document.querySelectorAll("[data-graph-filter]"));
+const selectedRobotOnlyFilter = document.querySelector("#selectedRobotOnlyFilter");
 
 let lastResult = null;
 let lastFacts = [];
@@ -78,6 +80,13 @@ let activeOntologyName = defaultOntologyName;
 let activeRuleName = defaultRuleName;
 let activeModelNames = "No models loaded";
 let graphMode = "selected";
+const graphFilters = {
+  robot: true,
+  capability: true,
+  value: true,
+  fact: true,
+  selectedRobotOnly: false,
+};
 
 function renderAssetStatus(errors = "") {
   ontologyStatus.textContent = `Ontology: ${activeOntologyName}`;
@@ -507,6 +516,13 @@ function updateGraphButtons() {
   wholeGraphButton.classList.toggle("active", graphMode === "whole");
 }
 
+function updateGraphFilters() {
+  graphFilterInputs.forEach((input) => {
+    graphFilters[input.dataset.graphFilter] = input.checked;
+  });
+  graphFilters.selectedRobotOnly = selectedRobotOnlyFilter.checked;
+}
+
 function svgPointFromEvent(event) {
   const point = factGraph.createSVGPoint();
   point.x = event.clientX;
@@ -737,6 +753,7 @@ function renderGraph(fact) {
 function renderWholeGraph() {
   graphMode = "whole";
   updateGraphButtons();
+  updateGraphFilters();
 
   if (!lastResult?.model_outputs?.length) {
     factGraph.innerHTML = "";
@@ -746,6 +763,8 @@ function renderWholeGraph() {
 
   const nodes = [];
   const edges = [];
+  const visibleRobotIndexes = new Set();
+  const selectedRobotName = selectedFact ? shortName(selectedFact.robot).toLowerCase() : "";
   const robotX = 130;
   const capabilityX = 390;
   const valueX = 650;
@@ -753,6 +772,10 @@ function renderWholeGraph() {
 
   lastResult.model_outputs.forEach((result, index) => {
     const robot = shortName(result.robot || result.model);
+    if (graphFilters.selectedRobotOnly && robot.toLowerCase() !== selectedRobotName) {
+      return;
+    }
+    visibleRobotIndexes.add(index);
     const y = 90 + index * 120;
     const robotId = `robot-${index}`;
     const repeatabilityId = `repeatability-${index}`;
@@ -760,47 +783,65 @@ function renderWholeGraph() {
     const repeatabilityValueId = `repeatability-value-${index}`;
     const precisionValueId = `precision-value-${index}`;
 
-    nodes.push(
-      { id: robotId, label: robot, x: robotX, y, kind: "robot" },
-      { id: repeatabilityId, label: "Operational\nRepeatability\nCapability", x: capabilityX, y: y - 35, kind: "capability" },
-      { id: precisionId, label: "Operational\nPrecision\nCapability", x: capabilityX, y: y + 35, kind: "capability" },
-      { id: repeatabilityValueId, label: formatValue(result.repeatability), x: valueX, y: y - 35, kind: "value" },
-      { id: precisionValueId, label: formatValue(result.precision), x: valueX, y: y + 35, kind: "value" }
-    );
-
-    edges.push(
-      { from: robotId, to: repeatabilityId, label: ["RCO:hasCapability"] },
-      { from: robotId, to: precisionId, label: ["RCO:hasCapability"] },
-      { from: repeatabilityId, to: repeatabilityValueId, label: ["RCO:has_Measurement_Value"] },
-      { from: precisionId, to: precisionValueId, label: ["RCO:has_Measurement_Value"] }
-    );
-  });
-
-  lastFacts.forEach((fact, index) => {
-    const robot = shortName(fact.robot);
-    const robotIndex = lastResult.model_outputs.findIndex((result) =>
-      shortName(result.robot || result.model).toLowerCase() === robot.toLowerCase()
-    );
-    if (robotIndex < 0) {
-      return;
+    if (graphFilters.robot) {
+      nodes.push({ id: robotId, label: robot, x: robotX, y, kind: "robot" });
     }
-    const factId = `fact-${index}`;
-    const robotId = `robot-${robotIndex}`;
-    nodes.push({
-      id: factId,
-      label: wrapOntologyName(shortName(fact.type)),
-      x: factX,
-      y: 70 + index * 52,
-      kind: "fact",
-      selected: selectedFact?.type === fact.type && selectedFact?.robot === fact.robot,
-    });
-    edges.push({ from: robotId, to: factId, label: ["rdf:type"] });
+    if (graphFilters.capability) {
+      nodes.push(
+        { id: repeatabilityId, label: "Operational\nRepeatability\nCapability", x: capabilityX, y: y - 35, kind: "capability" },
+        { id: precisionId, label: "Operational\nPrecision\nCapability", x: capabilityX, y: y + 35, kind: "capability" }
+      );
+    }
+    if (graphFilters.value) {
+      nodes.push(
+        { id: repeatabilityValueId, label: formatValue(result.repeatability), x: valueX, y: y - 35, kind: "value" },
+        { id: precisionValueId, label: formatValue(result.precision), x: valueX, y: y + 35, kind: "value" }
+      );
+    }
+
+    if (graphFilters.robot && graphFilters.capability) {
+      edges.push(
+        { from: robotId, to: repeatabilityId, label: ["RCO:hasCapability"] },
+        { from: robotId, to: precisionId, label: ["RCO:hasCapability"] }
+      );
+    }
+    if (graphFilters.capability && graphFilters.value) {
+      edges.push(
+        { from: repeatabilityId, to: repeatabilityValueId, label: ["RCO:has_Measurement_Value"] },
+        { from: precisionId, to: precisionValueId, label: ["RCO:has_Measurement_Value"] }
+      );
+    }
   });
+
+  if (graphFilters.fact) {
+    lastFacts.forEach((fact, index) => {
+      const robot = shortName(fact.robot);
+      const robotIndex = lastResult.model_outputs.findIndex((result) =>
+        shortName(result.robot || result.model).toLowerCase() === robot.toLowerCase()
+      );
+      if (robotIndex < 0 || !visibleRobotIndexes.has(robotIndex)) {
+        return;
+      }
+      const factId = `fact-${index}`;
+      const robotId = `robot-${robotIndex}`;
+      nodes.push({
+        id: factId,
+        label: wrapOntologyName(shortName(fact.type)),
+        x: factX,
+        y: 70 + index * 52,
+        kind: "fact",
+        selected: selectedFact?.type === fact.type && selectedFact?.robot === fact.robot,
+      });
+      if (graphFilters.robot) {
+        edges.push({ from: robotId, to: factId, label: ["rdf:type"] });
+      }
+    });
+  }
 
   renderGraphCanvas(nodes, edges, [
     "This whole graph shows the current robots, capability measurement values, and reasoned facts.",
     "Drag nodes to inspect the relationships.",
-    "Reasoned facts are shown as robot rdf:type ontology fact edges.",
+    "Use filters to simplify the graph without changing the Knowledge Graph.",
   ]);
 }
 
@@ -1205,6 +1246,20 @@ refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
 selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
 wholeGraphButton.addEventListener("click", renderWholeGraph);
+graphFilterInputs.forEach((input) => {
+  input.addEventListener("change", () => {
+    updateGraphFilters();
+    if (graphMode === "whole") {
+      renderWholeGraph();
+    }
+  });
+});
+selectedRobotOnlyFilter.addEventListener("change", () => {
+  updateGraphFilters();
+  if (graphMode === "whole") {
+    renderWholeGraph();
+  }
+});
 cancelButton.addEventListener("click", closeDialog);
 okButton.addEventListener("click", closeDialog);
 uploadOntologyButton.addEventListener("click", () => ontologyFile.click());

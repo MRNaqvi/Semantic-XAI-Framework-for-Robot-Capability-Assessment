@@ -759,6 +759,31 @@ body {
   display: inline-block;
 }
 
+.graph-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.graph-filters label {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.14);
+  color: var(--text);
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.graph-filters input {
+  accent-color: var(--accent);
+}
+
 #factGraph {
   width: 100%;
   min-height: 420px;
