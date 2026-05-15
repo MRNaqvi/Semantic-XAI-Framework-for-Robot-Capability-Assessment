@@ -907,6 +907,15 @@ body {
   color: var(--muted);
 }
 
+.trace-panel h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.trace-panel ol {
+  margin-top: 0;
+}
+
 .trace-panel code {
   color: var(--text);
 }

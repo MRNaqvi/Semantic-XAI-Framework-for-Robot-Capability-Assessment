@@ -71,6 +71,7 @@ const graphFilterInputs = Array.from(document.querySelectorAll("[data-graph-filt
 const selectedRobotOnlyFilter = document.querySelector("#selectedRobotOnlyFilter");
 
 let lastResult = null;
+let lastCoordinates = [];
 let lastFacts = [];
 let baselineFacts = [];
 let simulatedFacts = [];
@@ -540,6 +541,9 @@ function svgPointFromEvent(event) {
 
 function renderTrace(items) {
   tracePanel.innerHTML = "";
+  const heading = document.createElement("h3");
+  heading.textContent = "Reasoning Trace";
+  tracePanel.appendChild(heading);
   const list = document.createElement("ol");
   items.forEach((item) => {
     const li = document.createElement("li");
@@ -547,6 +551,30 @@ function renderTrace(items) {
     list.appendChild(li);
   });
   tracePanel.appendChild(list);
+}
+
+function buildSelectedFactTrace(fact, modelResult) {
+  const xyz = lastCoordinates.length ? lastCoordinates.join(", ") : "not available";
+  const source = modelResult?.source || (simulatedMode ? "User simulated value" : "NN Model prediction");
+  const repeatability = formatValue(modelResult?.repeatability ?? 0);
+  const precision = formatValue(modelResult?.precision ?? 0);
+  const factName = shortName(fact.type);
+  const robotName = shortName(fact.robot);
+  const capabilityFocus = factName.toLowerCase().includes("precision")
+    ? `precision value ${precision}`
+    : factName.toLowerCase().includes("repeatability")
+      ? `repeatability value ${repeatability}`
+      : `repeatability ${repeatability} and precision ${precision}`;
+
+  return [
+    `Task input: Cartesian Coordinates X, Y, Z = ${xyz}.`,
+    `Robot considered: ${robotName}.`,
+    `Operational repeatability capability measurement: ${repeatability} mm. Source: ${source}.`,
+    `Operational precision capability measurement: ${precision} mm. Source: ${source}.`,
+    "The measurements are written in the Knowledge Graph using RCO:has_Measurement_Value.",
+    `The Datalog rules compare robot capability measurements; this fact is supported by the ${capabilityFocus}.`,
+    `Reasoned fact: ${robotName} rdf:type ${factName}.`,
+  ];
 }
 
 function humanizeKind(kind = "default") {
@@ -755,11 +783,7 @@ function renderGraph(fact) {
     { from: "robot", to: "fact", label: ["rdf:type"] },
   ];
 
-  renderGraphCanvas(nodes, edges, [
-    "Based on Cartesian Coordinates X, Y, Z for a new task.",
-    "Predicted or simulated values are stored as RCO:has_Measurement_Value.",
-    `The selected fact is ${shortName(fact.robot)} rdf:type ${shortName(fact.type)}.`,
-  ]);
+  renderGraphCanvas(nodes, edges, buildSelectedFactTrace(fact, modelResult));
 }
 
 function renderWholeGraph() {
@@ -1199,6 +1223,7 @@ async function executePrediction() {
     }
 
     lastResult = payload.data[0];
+    lastCoordinates = coordinates;
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
     });
