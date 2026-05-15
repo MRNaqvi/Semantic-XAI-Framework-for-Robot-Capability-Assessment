@@ -19,6 +19,7 @@ This S-XAI demo version includes Natural Language explanations. To enable them, 
 - .NET SDK 8 or newer
 - RDFox 7.5b license file
 - Optional: OpenAI API key for natural language explanations
+- Optional: `lime` Python package for NN XAI explanations
 
 RDFox 7.5b runtime files are included under:
 
@@ -61,6 +62,12 @@ $env:RDFOX_LICENSE_FILE = "C:\Path\To\RDFox.lic"
 `config.local.ps1` is ignored by Git.
 
 ## One Command Run
+
+If Python dependencies are missing on a fresh machine, install the Flask model API requirements first:
+
+```powershell
+pip install -r ".\App\requirements.txt"
+```
 
 From the project folder:
 

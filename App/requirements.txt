@@ -1,0 +1,6 @@
+flask
+flask-cors
+h5py
+lime
+numpy
+tensorflow

@@ -9,6 +9,14 @@ from flask_cors import CORS
 import tensorflow as tf
 from tensorflow import keras
 
+try:
+    from lime.lime_tabular import LimeTabularExplainer
+except Exception as exc:
+    LimeTabularExplainer = None
+    LIME_IMPORT_ERROR = str(exc)
+else:
+    LIME_IMPORT_ERROR = ""
+
 
 app = Flask(__name__)
 CORS(app)
@@ -42,6 +50,7 @@ MODEL_CONFIGS = [
 
 MODELS = {}
 MODEL_LOAD_ERRORS = {}
+FEATURE_NAMES = ["X", "Y", "Z"]
 
 
 def load_models():
@@ -239,6 +248,64 @@ def model_status():
             "errors": MODEL_LOAD_ERRORS,
         }
     )
+
+
+@app.route("/explain/lime/status", methods=["GET"])
+def lime_status():
+    return jsonify(
+        {
+            "available": LimeTabularExplainer is not None,
+            "error": LIME_IMPORT_ERROR,
+            "features": FEATURE_NAMES,
+            "loaded_models": sorted(MODELS.keys()),
+        }
+    )
+
+
+@app.route("/explain/lime", methods=["POST"])
+def explain_lime():
+    try:
+        if LimeTabularExplainer is None:
+            raise RuntimeError(
+                f"LIME is not installed or could not be imported: {LIME_IMPORT_ERROR}"
+            )
+
+        request_body = request.get_json(silent=True) or {}
+        data = request_body.get("data")
+        if not isinstance(data, list) or len(data) != 3:
+            raise ValueError("Data must contain exactly 3 XYZ values.")
+
+        coordinates = [float(value) for value in data]
+
+        return jsonify(
+            {
+                "code": 202,
+                "status": True,
+                "message": "LIME endpoint is ready. Explanation generation is added in the next milestone.",
+                "data": {
+                    "task_coordinates": {
+                        "x": coordinates[0],
+                        "y": coordinates[1],
+                        "z": coordinates[2],
+                    },
+                    "features": FEATURE_NAMES,
+                    "loaded_models": sorted(MODELS.keys()),
+                },
+            }
+        )
+
+    except Exception as exc:
+        return (
+            jsonify(
+                {
+                    "code": 400,
+                    "status": False,
+                    "message": str(exc),
+                    "data": "",
+                }
+            ),
+            400,
+        )
 
 
 @app.route("/models/upload", methods=["POST"])
