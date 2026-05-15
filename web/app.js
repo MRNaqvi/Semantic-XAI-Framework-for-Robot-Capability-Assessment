@@ -558,6 +558,8 @@ function buildSelectedFactTrace(fact, modelResult) {
   const source = modelResult?.source || (simulatedMode ? "User simulated value" : "NN Model prediction");
   const repeatability = formatValue(modelResult?.repeatability ?? 0);
   const precision = formatValue(modelResult?.precision ?? 0);
+  const baselineRepeatability = modelResult?.modelBaseline ? formatValue(modelResult.modelBaseline.repeatability) : null;
+  const baselinePrecision = modelResult?.modelBaseline ? formatValue(modelResult.modelBaseline.precision) : null;
   const factName = shortName(fact.type);
   const robotName = shortName(fact.robot);
   const capabilityFocus = factName.toLowerCase().includes("precision")
@@ -571,6 +573,9 @@ function buildSelectedFactTrace(fact, modelResult) {
     `Robot considered: ${robotName}.`,
     `Operational repeatability capability measurement: ${repeatability} mm. Source: ${source}.`,
     `Operational precision capability measurement: ${precision} mm. Source: ${source}.`,
+    ...(modelResult?.modelBaseline
+      ? [`Original NN model values before simulation: repeatability ${baselineRepeatability} mm, precision ${baselinePrecision} mm.`]
+      : []),
     "The measurements are written in the Knowledge Graph using RCO:has_Measurement_Value.",
     `The Datalog rules compare robot capability measurements; this fact is supported by the ${capabilityFocus}.`,
     `Reasoned fact: ${robotName} rdf:type ${factName}.`,
@@ -582,6 +587,7 @@ function humanizeKind(kind = "default") {
     robot: "Robot",
     capability: "Capability",
     value: "Measurement value",
+    simulated: "User simulated measurement value",
     fact: "Reasoned fact",
   }[kind] || "Graph node";
 }
@@ -608,8 +614,12 @@ function renderNodeDetails(node, edges, nodeMap) {
     ["Node type", humanizeKind(node.kind)],
     ["Identifier", node.id],
   ];
-  if (node.kind === "value") {
+  if (node.kind === "value" || node.kind === "simulated") {
     rows.push(["Measurement value", cleanLabel]);
+    rows.push(["Source", node.source || "NN Model prediction"]);
+    if (node.baselineValue) {
+      rows.push(["Original NN value", node.baselineValue]);
+    }
   }
   if (node.kind === "fact") {
     rows.push(["Ontology fact", cleanLabel]);
@@ -770,8 +780,24 @@ function renderGraph(fact) {
     { id: "robot", label: robot, x: 150, y: 210, kind: "robot" },
     { id: "repeatabilityCapability", label: "Operational\nRepeatability\nCapability", x: 390, y: 95, kind: "capability" },
     { id: "precisionCapability", label: "Operational\nPrecision\nCapability", x: 390, y: 325, kind: "capability" },
-    { id: "repeatabilityValue", label: formatValue(modelResult?.repeatability ?? 0), x: 730, y: 95, kind: "value" },
-    { id: "precisionValue", label: formatValue(modelResult?.precision ?? 0), x: 730, y: 325, kind: "value" },
+    {
+      id: "repeatabilityValue",
+      label: formatValue(modelResult?.repeatability ?? 0),
+      x: 730,
+      y: 95,
+      kind: modelResult?.source === "User simulated value" ? "simulated" : "value",
+      source: modelResult?.source || "NN Model prediction",
+      baselineValue: modelResult?.modelBaseline ? formatValue(modelResult.modelBaseline.repeatability) : "",
+    },
+    {
+      id: "precisionValue",
+      label: formatValue(modelResult?.precision ?? 0),
+      x: 730,
+      y: 325,
+      kind: modelResult?.source === "User simulated value" ? "simulated" : "value",
+      source: modelResult?.source || "NN Model prediction",
+      baselineValue: modelResult?.modelBaseline ? formatValue(modelResult.modelBaseline.precision) : "",
+    },
     { id: "fact", label: ontologyFactName, x: 730, y: 210, kind: "fact", selected: true },
   ];
 
@@ -843,9 +869,26 @@ function renderWholeGraph() {
       );
     }
     if (graphFilters.value) {
+      const valueKind = result.source === "User simulated value" ? "simulated" : "value";
       nodes.push(
-        { id: repeatabilityValueId, label: formatValue(result.repeatability), x: valueX, y: y - 35, kind: "value" },
-        { id: precisionValueId, label: formatValue(result.precision), x: valueX, y: y + 35, kind: "value" }
+        {
+          id: repeatabilityValueId,
+          label: formatValue(result.repeatability),
+          x: valueX,
+          y: y - 35,
+          kind: valueKind,
+          source: result.source || "NN Model prediction",
+          baselineValue: result.modelBaseline ? formatValue(result.modelBaseline.repeatability) : "",
+        },
+        {
+          id: precisionValueId,
+          label: formatValue(result.precision),
+          x: valueX,
+          y: y + 35,
+          kind: valueKind,
+          source: result.source || "NN Model prediction",
+          baselineValue: result.modelBaseline ? formatValue(result.modelBaseline.precision) : "",
+        }
       );
     }
 
@@ -1022,6 +1065,12 @@ ${values}
 }
 
 function updateCapabilityValue(result, capabilityLabel, value) {
+  if (!result.modelBaseline) {
+    result.modelBaseline = {
+      repeatability: result.repeatability,
+      precision: result.precision,
+    };
+  }
   result[capabilityLabel] = value;
   result.outputs[capabilityLabel] = value;
   result.source = "User simulated value";

@@ -747,6 +747,10 @@ body {
   background: #fff4cf;
 }
 
+.legend-dot.simulated {
+  background: #ffd1e8;
+}
+
 .legend-dot.fact {
   background: #f0a3a1;
 }
@@ -824,6 +828,11 @@ body {
 
 .graph-node.value circle {
   fill: #fff4cf;
+}
+
+.graph-node.simulated circle {
+  fill: #ffd1e8;
+  stroke-dasharray: 6 4;
 }
 
 .graph-node.fact circle {
