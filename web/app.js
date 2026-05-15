@@ -609,7 +609,11 @@ function renderNodeDetails(node, edges, nodeMap) {
   graphDetails.appendChild(list);
 }
 
-function renderGraphCanvas(nodes, edges, traceItems) {
+function renderGraphCanvas(nodes, edges, traceItems, options = {}) {
+  const graphWidth = options.width || 1100;
+  const graphHeight = options.height || 420;
+  factGraph.setAttribute("viewBox", `0 0 ${graphWidth} ${graphHeight}`);
+  factGraph.style.minHeight = `${graphHeight}px`;
   factGraph.innerHTML = "";
   tracePanel.innerHTML = "";
   graphDetails.innerHTML = "<h3>Node Details</h3><p>Click a graph node to inspect its type, value, and connected predicates.</p>";
@@ -694,8 +698,8 @@ function renderGraphCanvas(nodes, edges, traceItems) {
         return;
       }
       const point = svgPointFromEvent(event);
-      node.x = Math.max(50, Math.min(1050, point.x - offset.x));
-      node.y = Math.max(55, Math.min(365, point.y - offset.y));
+      node.x = Math.max(50, Math.min(graphWidth - 50, point.x - offset.x));
+      node.y = Math.max(55, Math.min(graphHeight - 55, point.y - offset.y));
       moved = true;
       group.setAttribute("transform", `translate(${node.x} ${node.y})`);
       updateEdges();
@@ -771,12 +775,24 @@ function renderWholeGraph() {
 
   const nodes = [];
   const edges = [];
+  const factsByRobot = new Map();
+  lastFacts.forEach((fact) => {
+    const robot = shortName(fact.robot).toLowerCase();
+    if (!factsByRobot.has(robot)) {
+      factsByRobot.set(robot, []);
+    }
+    factsByRobot.get(robot).push(fact);
+  });
   const visibleRobotIndexes = new Set();
+  const robotYByIndex = new Map();
   const selectedRobotName = selectedFact ? shortName(selectedFact.robot).toLowerCase() : "";
   const robotX = 130;
   const capabilityX = 390;
   const valueX = 650;
   const factX = 930;
+  const rowGap = graphFilters.fact ? 170 : 135;
+  let visibleRow = 0;
+  let maxY = 420;
 
   lastResult.model_outputs.forEach((result, index) => {
     const robot = shortName(result.robot || result.model);
@@ -784,7 +800,9 @@ function renderWholeGraph() {
       return;
     }
     visibleRobotIndexes.add(index);
-    const y = 90 + index * 120;
+    const y = 95 + visibleRow * rowGap;
+    visibleRow += 1;
+    robotYByIndex.set(index, y);
     const robotId = `robot-${index}`;
     const repeatabilityId = `repeatability-${index}`;
     const precisionId = `precision-${index}`;
@@ -822,7 +840,8 @@ function renderWholeGraph() {
   });
 
   if (graphFilters.fact) {
-    lastFacts.forEach((fact, index) => {
+    let factIndex = 0;
+    lastFacts.forEach((fact) => {
       const robot = shortName(fact.robot);
       const robotIndex = lastResult.model_outputs.findIndex((result) =>
         shortName(result.robot || result.model).toLowerCase() === robot.toLowerCase()
@@ -830,13 +849,21 @@ function renderWholeGraph() {
       if (robotIndex < 0 || !visibleRobotIndexes.has(robotIndex)) {
         return;
       }
-      const factId = `fact-${index}`;
+      const robotFacts = factsByRobot.get(robot.toLowerCase()) || [];
+      const robotFactPosition = robotFacts.findIndex(
+        (item) => item.type === fact.type && item.robot === fact.robot
+      );
+      const baseY = robotYByIndex.get(robotIndex) || 95;
+      const factY = baseY + (robotFactPosition - (robotFacts.length - 1) / 2) * 48;
+      maxY = Math.max(maxY, factY + 80);
+      const factId = `fact-${factIndex}`;
+      factIndex += 1;
       const robotId = `robot-${robotIndex}`;
       nodes.push({
         id: factId,
         label: wrapOntologyName(shortName(fact.type)),
         x: factX,
-        y: 70 + index * 52,
+        y: factY,
         kind: "fact",
         selected: selectedFact?.type === fact.type && selectedFact?.robot === fact.robot,
       });
@@ -846,11 +873,14 @@ function renderWholeGraph() {
     });
   }
 
+  maxY = Math.max(maxY, 95 + Math.max(visibleRow - 1, 0) * rowGap + 100);
+  const graphHeight = Math.max(420, maxY);
+
   renderGraphCanvas(nodes, edges, [
     "This whole graph shows the current robots, capability measurement values, and reasoned facts.",
     "Drag nodes to inspect the relationships.",
-    "Use filters to simplify the graph without changing the Knowledge Graph.",
-  ]);
+    "The whole graph layout groups reasoned facts beside their robot.",
+  ], { height: graphHeight });
 }
 
 async function refreshFacts(target = "after") {
