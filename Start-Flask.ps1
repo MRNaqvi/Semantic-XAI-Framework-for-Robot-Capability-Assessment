@@ -4,16 +4,9 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location (Join-Path $root "App")
 
 $requirements = Join-Path (Get-Location) "requirements.txt"
-$dependencyCheck = @'
-import importlib.util
-missing = [
-    package for package in ["flask", "tensorflow", "lime"]
-    if importlib.util.find_spec(package) is None
-]
-print(",".join(missing))
-'@
+$dependencyCheck = Join-Path (Get-Location) "check_dependencies.py"
 
-$missing = python -c $dependencyCheck
+$missing = python $dependencyCheck
 if ($LASTEXITCODE -ne 0) {
     throw "Python dependency check failed."
 }
