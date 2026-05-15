@@ -760,10 +760,14 @@ body {
 }
 
 .graph-filters {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   gap: 8px;
   margin: 0 0 10px;
+}
+
+.graph-filters.visible {
+  display: flex;
 }
 
 .graph-filters label {

@@ -290,6 +290,10 @@ function activateExplanationTab(tabId) {
     panel.classList.toggle("active", isActive);
     panel.hidden = !isActive;
   });
+
+  if (tabId === "graphTab") {
+    updateGraphButtons();
+  }
 }
 
 function activateTab(tabId) {
@@ -515,7 +519,9 @@ function renderSvgText(parent, lines, x, y, className, lineHeight = 14) {
 function updateGraphButtons() {
   selectedGraphButton.classList.toggle("active", graphMode === "selected");
   wholeGraphButton.classList.toggle("active", graphMode === "whole");
-  graphFiltersPanel.hidden = graphMode !== "whole";
+  const showFilters = graphMode === "whole";
+  graphFiltersPanel.hidden = !showFilters;
+  graphFiltersPanel.classList.toggle("visible", showFilters);
 }
 
 function updateGraphFilters() {
