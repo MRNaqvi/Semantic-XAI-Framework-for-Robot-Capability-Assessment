@@ -1227,6 +1227,81 @@ async function explainFact(fact) {
   }
 }
 
+function limeCapabilityToText(robotExplanation, capability) {
+  const explanation = robotExplanation?.lime?.[capability];
+  if (!explanation) {
+    return "";
+  }
+
+  const title = capability === "repeatability" ? "Repeatability" : "Precision";
+  const influences = makeInfluenceRows(explanation)
+    .map((item) => `    ${item.feature}: ${formatWeight(item.weight)}`)
+    .join("\n");
+
+  return [
+    `  ${title} prediction: ${formatValue(explanation.prediction)}`,
+    `  Strongest local influence: ${explanation.strongest_feature}`,
+    "  XYZ feature weights:",
+    influences,
+  ].join("\n");
+}
+
+function limeReportText() {
+  const explanations = lastLimeResult?.data?.explanations || [];
+  if (!explanations.length) {
+    return "No LIME explanations generated.";
+  }
+
+  return explanations
+    .map((robotExplanation) => {
+      const robot = robotDisplayName[robotExplanation.model] || robotExplanation.model;
+      return [
+        `${robot}:`,
+        limeCapabilityToText(robotExplanation, "repeatability"),
+        limeCapabilityToText(robotExplanation, "precision"),
+      ].filter(Boolean).join("\n");
+    })
+    .join("\n\n");
+}
+
+function selectedFactXaiReportText() {
+  if (!selectedFact) {
+    return "No selected fact.";
+  }
+
+  const modelResult = findModelResultForFact(selectedFact);
+  const limeResult = getLimeForModel(modelResult);
+  const lines = [
+    `Selected fact: ${shortName(selectedFact.robot)} rdf:type ${shortName(selectedFact.type)}.`,
+  ];
+
+  if (!modelResult) {
+    lines.push("No model prediction is available for this robot.");
+    return lines.join("\n");
+  }
+
+  if (!limeResult) {
+    lines.push("No LIME explanation is available for this selected fact.");
+    return lines.join("\n");
+  }
+
+  getFactCapabilityKeys(selectedFact).forEach((capability) => {
+    const explanation = limeResult.lime?.[capability];
+    if (!explanation) {
+      return;
+    }
+    const title = capability === "repeatability" ? "Repeatability" : "Precision";
+    lines.push(`${title} value: ${formatValue(modelResult[capability])}`);
+    lines.push(`Source: ${modelResult.source || "NN Model prediction"}.`);
+    lines.push(`Strongest local influence: ${explanation.strongest_feature}.`);
+    makeInfluenceRows(explanation).forEach((item) => {
+      lines.push(`  ${item.feature}: ${formatWeight(item.weight)}`);
+    });
+  });
+
+  return lines.join("\n");
+}
+
 function exportReport() {
   const report = [
     "Robot Operational Capability Report",
@@ -1242,6 +1317,12 @@ function exportReport() {
     "",
     "After simulation facts:",
     factsToText(simulatedFacts),
+    "",
+    "NN XAI LIME feature influence:",
+    limeReportText(),
+    "",
+    "Selected fact NN contribution:",
+    selectedFactXaiReportText(),
     "",
     "Selected explanation:",
     nlExplanation.textContent,
