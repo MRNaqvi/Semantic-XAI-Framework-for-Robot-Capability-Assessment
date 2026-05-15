@@ -45,6 +45,7 @@ const ruleLog = document.querySelector("#ruleLog");
 const clearRuleLogButton = document.querySelector("#clearRuleLogButton");
 const factsList = document.querySelector("#factsList");
 const factGraph = document.querySelector("#factGraph");
+const graphDetails = document.querySelector("#graphDetails");
 const tracePanel = document.querySelector("#tracePanel");
 const nlExplanation = document.querySelector("#nlExplanation");
 const ruleList = document.querySelector("#ruleList");
@@ -524,9 +525,70 @@ function renderTrace(items) {
   tracePanel.appendChild(list);
 }
 
+function humanizeKind(kind = "default") {
+  return {
+    robot: "Robot",
+    capability: "Capability",
+    value: "Measurement value",
+    fact: "Reasoned fact",
+  }[kind] || "Graph node";
+}
+
+function renderNodeDetails(node, edges, nodeMap) {
+  const cleanLabel = node.label.replace(/\n/g, " ");
+  const connected = edges
+    .filter((edge) => edge.from === node.id || edge.to === node.id)
+    .map((edge) => {
+      const predicate = edge.label?.join(" ") || "related to";
+      const otherId = edge.from === node.id ? edge.to : edge.from;
+      const other = nodeMap.get(otherId);
+      const direction = edge.from === node.id ? "outgoing" : "incoming";
+      return `${direction}: ${predicate} ${edge.from === node.id ? "->" : "<-"} ${other?.label.replace(/\n/g, " ") || otherId}`;
+    });
+
+  graphDetails.innerHTML = "";
+  const title = document.createElement("h3");
+  title.textContent = cleanLabel;
+  graphDetails.appendChild(title);
+
+  const meta = document.createElement("dl");
+  const rows = [
+    ["Node type", humanizeKind(node.kind)],
+    ["Identifier", node.id],
+  ];
+  if (node.kind === "value") {
+    rows.push(["Measurement value", cleanLabel]);
+  }
+  if (node.kind === "fact") {
+    rows.push(["Ontology fact", cleanLabel]);
+  }
+
+  rows.forEach(([term, description]) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = description;
+    meta.append(dt, dd);
+  });
+  graphDetails.appendChild(meta);
+
+  const relatedTitle = document.createElement("h4");
+  relatedTitle.textContent = "Connected predicates";
+  graphDetails.appendChild(relatedTitle);
+
+  const list = document.createElement("ul");
+  (connected.length ? connected : ["No connected predicates."]).forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    list.appendChild(li);
+  });
+  graphDetails.appendChild(list);
+}
+
 function renderGraphCanvas(nodes, edges, traceItems) {
   factGraph.innerHTML = "";
   tracePanel.innerHTML = "";
+  graphDetails.innerHTML = "<h3>Node Details</h3><p>Click a graph node to inspect its type, value, and connected predicates.</p>";
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const edgeRefs = [];
 
@@ -596,9 +658,11 @@ function renderGraphCanvas(nodes, edges, traceItems) {
     });
 
     let offset = null;
+    let moved = false;
     group.addEventListener("pointerdown", (event) => {
       const point = svgPointFromEvent(event);
       offset = { x: point.x - node.x, y: point.y - node.y };
+      moved = false;
       group.setPointerCapture(event.pointerId);
     });
     group.addEventListener("pointermove", (event) => {
@@ -608,10 +672,14 @@ function renderGraphCanvas(nodes, edges, traceItems) {
       const point = svgPointFromEvent(event);
       node.x = Math.max(50, Math.min(1050, point.x - offset.x));
       node.y = Math.max(55, Math.min(365, point.y - offset.y));
+      moved = true;
       group.setAttribute("transform", `translate(${node.x} ${node.y})`);
       updateEdges();
     });
     group.addEventListener("pointerup", () => {
+      if (!moved) {
+        renderNodeDetails(node, edges, nodeMap);
+      }
       offset = null;
     });
     group.addEventListener("pointercancel", () => {
