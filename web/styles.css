@@ -979,6 +979,52 @@ body {
   gap: 12px;
 }
 
+.selected-fact-xai {
+  border: 1px solid rgba(204, 243, 255, 0.28);
+  background: rgba(18, 34, 49, 0.72);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 14px 0;
+}
+
+.selected-fact-xai h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.selected-fact-xai p {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+
+.selected-xai-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.selected-xai-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.selected-xai-card h4 {
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.selected-xai-card ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.selected-xai-card li {
+  margin: 4px 0;
+  color: var(--text);
+}
+
 .lime-card {
   padding: 14px;
   border: 1px solid var(--field-border);

@@ -55,6 +55,7 @@ const beforeFacts = document.querySelector("#beforeFacts");
 const afterFacts = document.querySelector("#afterFacts");
 const limeStatus = document.querySelector("#limeStatus");
 const limeResults = document.querySelector("#limeResults");
+const selectedFactXai = document.querySelector("#selectedFactXai");
 const factsQueryText = document.querySelector("#factsQueryText");
 const updateQueryText = document.querySelector("#updateQueryText");
 const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
@@ -296,6 +297,7 @@ function renderLimeResults(payload) {
   const explanations = payload?.data?.explanations || [];
   if (!explanations.length) {
     limeResults.textContent = "No LIME explanations available yet.";
+    renderSelectedFactXai();
     return;
   }
 
@@ -342,6 +344,7 @@ function renderLimeResults(payload) {
 
     limeResults.appendChild(card);
   });
+  renderSelectedFactXai();
 }
 
 async function runLimeExplanation() {
@@ -361,8 +364,124 @@ async function runLimeExplanation() {
     lastLimeResult = null;
     limeStatus.textContent = error.message;
     limeResults.innerHTML = "";
+    renderSelectedFactXai();
     appendRuleLog(`LIME explanation failed: ${error.message}`);
   }
+}
+
+function findModelResultForFact(fact) {
+  if (!fact || !lastResult?.model_outputs?.length) {
+    return null;
+  }
+
+  const robot = shortName(fact.robot).toLowerCase();
+  return lastResult.model_outputs.find((item) =>
+    shortName(item.robot || item.model).toLowerCase() === robot
+  ) || null;
+}
+
+function getFactCapabilityKeys(fact) {
+  const factName = shortName(fact?.type).toLowerCase();
+  if (factName.includes("repeatability")) {
+    return ["repeatability"];
+  }
+  if (factName.includes("precision")) {
+    return ["precision"];
+  }
+  return ["repeatability", "precision"];
+}
+
+function getLimeForModel(modelResult) {
+  if (!modelResult || !lastLimeResult?.data?.explanations?.length) {
+    return null;
+  }
+
+  const modelName = modelResult.model;
+  const robotName = shortName(modelResult.robot || modelResult.model).toLowerCase();
+  return lastLimeResult.data.explanations.find((item) =>
+    item.model === modelName || shortName(item.robot || item.model).toLowerCase() === robotName
+  ) || null;
+}
+
+function makeInfluenceRows(explanation) {
+  const weights = explanation?.feature_weights || {};
+  return ["X", "Y", "Z"]
+    .map((feature) => ({
+      feature,
+      weight: Number(weights[feature] || 0),
+    }))
+    .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
+}
+
+function renderSelectedFactXai(fact = selectedFact) {
+  if (!selectedFactXai) {
+    return;
+  }
+
+  selectedFactXai.innerHTML = "";
+  const heading = document.createElement("h3");
+  heading.textContent = "Selected Fact NN Contribution";
+  selectedFactXai.appendChild(heading);
+
+  if (!fact) {
+    const message = document.createElement("p");
+    message.textContent = "Select a reasoned fact to see which neural-network prediction and XYZ feature influences contributed to it.";
+    selectedFactXai.appendChild(message);
+    return;
+  }
+
+  const modelResult = findModelResultForFact(fact);
+  const limeResult = getLimeForModel(modelResult);
+  const robot = shortName(fact.robot);
+  const factName = shortName(fact.type);
+
+  const summary = document.createElement("p");
+  summary.textContent = `Selected fact: ${robot} rdf:type ${factName}.`;
+  selectedFactXai.appendChild(summary);
+
+  if (!modelResult) {
+    const message = document.createElement("p");
+    message.textContent = "No model prediction is available for this robot yet.";
+    selectedFactXai.appendChild(message);
+    return;
+  }
+
+  if (!limeResult) {
+    const message = document.createElement("p");
+    message.textContent = "Run or refresh LIME to see the XYZ feature influences for this selected fact.";
+    selectedFactXai.appendChild(message);
+    return;
+  }
+
+  const list = document.createElement("div");
+  list.className = "selected-xai-grid";
+  getFactCapabilityKeys(fact).forEach((capability) => {
+    const explanation = limeResult.lime?.[capability];
+    if (!explanation) {
+      return;
+    }
+
+    const card = document.createElement("article");
+    card.className = "selected-xai-card";
+    const title = document.createElement("h4");
+    title.textContent = `${capability === "repeatability" ? "Repeatability" : "Precision"} value ${formatValue(modelResult[capability])}`;
+    card.appendChild(title);
+
+    const source = document.createElement("p");
+    source.textContent = `Source: ${modelResult.source || "NN Model prediction"}. Strongest local influence: ${explanation.strongest_feature}.`;
+    card.appendChild(source);
+
+    const rows = document.createElement("ol");
+    makeInfluenceRows(explanation).forEach((item) => {
+      const row = document.createElement("li");
+      row.textContent = `${item.feature}: ${formatWeight(item.weight)}`;
+      rows.appendChild(row);
+    });
+    card.appendChild(rows);
+    list.appendChild(card);
+  });
+
+  selectedFactXai.appendChild(list);
 }
 
 function refreshFileName(input) {
@@ -552,6 +671,7 @@ function renderFacts(facts) {
         graphMode = "selected";
         updateGraphButtons();
         renderGraph(fact);
+        renderSelectedFactXai(fact);
         activateExplanationTab("graphTab");
       });
 
@@ -1086,6 +1206,7 @@ async function explainFact(fact) {
   try {
     selectedFact = fact;
     renderGraph(fact);
+    renderSelectedFactXai(fact);
     nlExplanation.textContent = "Explaining...";
 
     const payload = await postJson(factExplainUrl, {
