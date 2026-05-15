@@ -18,12 +18,14 @@ $env:RDFOX_URL = "http://localhost:12110/"
 $env:RDFOX_ROLE = "guest"
 $env:RDFOX_PASSWORD = "guest"
 
-dotnet restore $project --configfile $nugetConfig /p:BaseIntermediateOutputPath=".\build-obj\" /p:RestoreIgnoreFailedSources=true
+$objPath = Join-Path $root ".dotnet-build\RdfoxWebApi\obj\"
+
+dotnet restore $project --configfile $nugetConfig /p:BaseIntermediateOutputPath="$objPath" /p:RestoreIgnoreFailedSources=true
 if ($LASTEXITCODE -ne 0) {
     throw ".NET restore failed."
 }
 
-dotnet run --project $project --no-restore --urls "http://localhost:11191" /p:BaseIntermediateOutputPath=".\build-obj\"
+dotnet run --project $project --no-restore --urls "http://localhost:11191" /p:BaseIntermediateOutputPath="$objPath"
 if ($LASTEXITCODE -ne 0) {
     throw ".NET API failed to start."
 }

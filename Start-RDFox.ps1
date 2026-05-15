@@ -29,21 +29,21 @@ $env:RDFOX_LICENSE_FILE = $licenseFile
 $serverParams = @(
     "-server-directory", $serverDir,
     "-persistence", "file",
-    "-channel", "TCP",
+    "-channel", "unsecure",
     "-port", "12110",
     "-role", "guest",
     "-password", "guest"
 )
 
-$serverParamsFile = Join-Path $serverDir "server.params"
-if (!(Test-Path -LiteralPath $serverParamsFile)) {
+$serverVersionDir = Join-Path $serverDir "v00001"
+if (!(Test-Path -LiteralPath $serverVersionDir)) {
     & $rdfoxExe @serverParams init
     if ($LASTEXITCODE -ne 0) {
         throw "RDFox initialization failed. Check that $licenseFile is valid and not expired."
     }
 }
 
-& $rdfoxExe -server-directory $serverDir -role guest -password guest daemon
+& $rdfoxExe -server-directory $serverDir -channel unsecure -port 12110 -role guest -password guest daemon
 if ($LASTEXITCODE -ne 0) {
     throw "RDFox daemon failed to start."
 }
