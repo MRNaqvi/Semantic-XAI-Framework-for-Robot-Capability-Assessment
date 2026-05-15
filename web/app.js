@@ -66,6 +66,7 @@ const explanationTabs = Array.from(document.querySelectorAll(".explanation-tab")
 const explanationPanels = Array.from(document.querySelectorAll(".explanation-panel"));
 const selectedGraphButton = document.querySelector("#selectedGraphButton");
 const wholeGraphButton = document.querySelector("#wholeGraphButton");
+const graphFiltersPanel = document.querySelector("#graphFilters");
 const graphFilterInputs = Array.from(document.querySelectorAll("[data-graph-filter]"));
 const selectedRobotOnlyFilter = document.querySelector("#selectedRobotOnlyFilter");
 
@@ -514,6 +515,7 @@ function renderSvgText(parent, lines, x, y, className, lineHeight = 14) {
 function updateGraphButtons() {
   selectedGraphButton.classList.toggle("active", graphMode === "selected");
   wholeGraphButton.classList.toggle("active", graphMode === "whole");
+  graphFiltersPanel.hidden = graphMode !== "whole";
 }
 
 function updateGraphFilters() {
