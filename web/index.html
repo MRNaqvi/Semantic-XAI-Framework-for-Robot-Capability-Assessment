@@ -155,6 +155,7 @@
         <button class="explanation-tab active" type="button" data-explanation-tab="factsTab">Reasoned Facts</button>
         <button class="explanation-tab" type="button" data-explanation-tab="graphTab">Graph</button>
         <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Counterfactual</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="nnXaiTab">NN XAI</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nlTab">Natural Language</button>
         <button class="explanation-tab" type="button" data-explanation-tab="rulesTab">Rules</button>
         <button class="explanation-tab" type="button" data-explanation-tab="sparqlTab">SPARQL</button>
@@ -215,6 +216,16 @@
       <section class="explanation-panel" id="nlTab" hidden>
         <h2>Natural Language Explanation</h2>
         <pre id="nlExplanation">Select a fact and click Explain. Add your OpenAI API key to get natural language explanations.</pre>
+      </section>
+
+      <section class="explanation-panel" id="nnXaiTab" hidden>
+        <div class="section-head compact-head">
+          <h2>NN XAI: LIME Explanation</h2>
+          <button id="refreshLimeButton" class="pill small-pill" type="button">Refresh LIME</button>
+        </div>
+        <p class="xai-note">LIME explains the local NN prediction around the current X, Y, Z task using feature weights for X, Y, and Z.</p>
+        <div id="limeStatus" class="status-text"></div>
+        <div id="limeResults" class="lime-results"></div>
       </section>
 
       <section class="explanation-panel" id="rulesTab" hidden>

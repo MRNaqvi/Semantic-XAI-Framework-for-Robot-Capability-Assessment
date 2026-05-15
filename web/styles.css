@@ -965,6 +965,77 @@ body {
   line-height: 1.45;
 }
 
+.compact-head {
+  margin-bottom: 8px;
+}
+
+.xai-note {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.lime-results {
+  display: grid;
+  gap: 12px;
+}
+
+.lime-card {
+  padding: 14px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.lime-card h3 {
+  margin: 0 0 12px;
+  color: var(--text);
+}
+
+.lime-capability {
+  margin-top: 12px;
+}
+
+.lime-capability h4 {
+  margin: 0 0 8px;
+  color: var(--teal);
+  font-size: 14px;
+}
+
+.lime-row {
+  display: grid;
+  grid-template-columns: 28px minmax(120px, 1fr) 72px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 7px;
+  color: var(--text);
+}
+
+.lime-bar-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.lime-bar-track i {
+  height: 100%;
+  border-radius: inherit;
+  display: block;
+}
+
+.lime-bar-track i.positive {
+  background: #8ef0be;
+}
+
+.lime-bar-track i.negative {
+  background: #f0a3a1;
+}
+
+.lime-summary {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
 .rule-card {
   padding: 12px;
   border: 1px solid var(--field-border);

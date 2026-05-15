@@ -51,6 +51,7 @@ MODEL_CONFIGS = [
 MODELS = {}
 MODEL_LOAD_ERRORS = {}
 FEATURE_NAMES = ["X", "Y", "Z"]
+OUTPUT_LABELS = ["repeatability", "precision"]
 
 
 def load_models():
@@ -183,6 +184,82 @@ def predict_with_model(config, data):
     }
 
 
+def make_lime_training_data(coordinates, sample_count=240):
+    center = np.asarray(coordinates, dtype=np.float32)
+    scale = np.maximum(np.abs(center) * 0.08, 0.05)
+    rng = np.random.default_rng(42)
+    samples = rng.normal(loc=center, scale=scale, size=(sample_count, len(FEATURE_NAMES)))
+    return np.vstack([center, samples]).astype(np.float32)
+
+
+def predict_output_column(model, samples, output_index):
+    prediction = model.predict(np.asarray(samples, dtype=np.float32), verbose=0)
+    if isinstance(prediction, (list, tuple)):
+        values = np.asarray(prediction[output_index]).reshape(-1)
+    else:
+        values = np.asarray(prediction).reshape((len(samples), -1))[:, output_index]
+    return values.astype(float)
+
+
+def explain_model_with_lime(config, coordinates, training_data):
+    model_name = config["name"]
+    if model_name not in MODELS:
+        error = MODEL_LOAD_ERRORS.get(model_name, "Model was not loaded.")
+        raise RuntimeError(f"{model_name} is unavailable: {error}")
+
+    model = MODELS[model_name]
+    result = predict_with_model(config, coordinates)
+    explanations = {}
+
+    for output_index, output_name in enumerate(OUTPUT_LABELS):
+        explainer = LimeTabularExplainer(
+            training_data,
+            feature_names=FEATURE_NAMES,
+            mode="regression",
+            discretize_continuous=False,
+            random_state=42,
+        )
+
+        def predict_fn(samples, index=output_index):
+            return predict_output_column(model, samples, index)
+
+        explanation = explainer.explain_instance(
+            np.asarray(coordinates, dtype=np.float32),
+            predict_fn,
+            num_features=len(FEATURE_NAMES),
+        )
+        weights_by_feature = {feature: 0.0 for feature in FEATURE_NAMES}
+        for feature, weight in explanation.as_list():
+            feature_name = feature.split(" ")[0]
+            if feature_name in weights_by_feature:
+                weights_by_feature[feature_name] = float(weight)
+
+        strongest_feature = max(
+            weights_by_feature,
+            key=lambda feature: abs(weights_by_feature[feature]),
+        )
+        explanations[output_name] = {
+            "prediction": result[output_name],
+            "feature_weights": weights_by_feature,
+            "strongest_feature": strongest_feature,
+            "strongest_weight": weights_by_feature[strongest_feature],
+            "intercept": float(explanation.intercept[0])
+            if hasattr(explanation, "intercept") and explanation.intercept
+            else None,
+        }
+
+    return {
+        "model": model_name,
+        "robot": config["robot"],
+        "input_features": coordinates,
+        "outputs": {
+            "repeatability": result["repeatability"],
+            "precision": result["precision"],
+        },
+        "lime": explanations,
+    }
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
@@ -277,11 +354,17 @@ def explain_lime():
 
         coordinates = [float(value) for value in data]
 
+        training_data = make_lime_training_data(coordinates)
+        explanations = [
+            explain_model_with_lime(config, coordinates, training_data)
+            for config in MODEL_CONFIGS
+        ]
+
         return jsonify(
             {
                 "code": 202,
                 "status": True,
-                "message": "LIME endpoint is ready. Explanation generation is added in the next milestone.",
+                "message": "LIME explanations generated successfully.",
                 "data": {
                     "task_coordinates": {
                         "x": coordinates[0],
@@ -289,7 +372,7 @@ def explain_lime():
                         "z": coordinates[2],
                     },
                     "features": FEATURE_NAMES,
-                    "loaded_models": sorted(MODELS.keys()),
+                    "explanations": explanations,
                 },
             }
         )

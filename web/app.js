@@ -6,6 +6,7 @@ const uploadTtlUrl = "http://localhost:11191/api/Query/UploadTTL";
 const uploadRuleUrl = "http://localhost:11191/api/Query/UploadRule";
 const modelStatusUrl = "http://127.0.0.1:5000/models/status";
 const uploadModelsUrl = "http://127.0.0.1:5000/models/upload";
+const limeExplainUrl = "http://127.0.0.1:5000/explain/lime";
 
 const robotOrder = ["IRB 1200", "IRB 2400", "Ned 2"];
 const robotDisplayName = {
@@ -29,6 +30,7 @@ const cancelButton = document.querySelector("#cancelButton");
 const okButton = document.querySelector("#okButton");
 const refreshFactsButton = document.querySelector("#refreshFactsButton");
 const exportReportButton = document.querySelector("#exportReportButton");
+const refreshLimeButton = document.querySelector("#refreshLimeButton");
 const resultDialog = document.querySelector("#resultDialog");
 const resultText = document.querySelector("#resultText");
 const simulationPanel = document.querySelector("#simulationPanel");
@@ -51,6 +53,8 @@ const nlExplanation = document.querySelector("#nlExplanation");
 const ruleList = document.querySelector("#ruleList");
 const beforeFacts = document.querySelector("#beforeFacts");
 const afterFacts = document.querySelector("#afterFacts");
+const limeStatus = document.querySelector("#limeStatus");
+const limeResults = document.querySelector("#limeResults");
 const factsQueryText = document.querySelector("#factsQueryText");
 const updateQueryText = document.querySelector("#updateQueryText");
 const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
@@ -76,6 +80,7 @@ const selectedRobotOnlyFilter = document.querySelector("#selectedRobotOnlyFilter
 
 let lastResult = null;
 let lastCoordinates = [];
+let lastLimeResult = null;
 let lastFacts = [];
 let baselineFacts = [];
 let simulatedFacts = [];
@@ -200,6 +205,10 @@ function formatValue(value) {
   return `[${Number(value).toFixed(8).replace(/0+$/, "").replace(/\.$/, "")}]`;
 }
 
+function formatWeight(value) {
+  return Number(value).toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+}
+
 function formatResults(modelOutputs) {
   const byName = new Map(modelOutputs.map((item) => [item.model, item]));
 
@@ -282,6 +291,80 @@ function renderRules() {
   });
 }
 
+function renderLimeResults(payload) {
+  limeResults.innerHTML = "";
+  const explanations = payload?.data?.explanations || [];
+  if (!explanations.length) {
+    limeResults.textContent = "No LIME explanations available yet.";
+    return;
+  }
+
+  explanations.forEach((robotExplanation) => {
+    const card = document.createElement("article");
+    card.className = "lime-card";
+    const title = document.createElement("h3");
+    title.textContent = robotDisplayName[robotExplanation.model] || robotExplanation.model;
+    card.appendChild(title);
+
+    ["repeatability", "precision"].forEach((capability) => {
+      const explanation = robotExplanation.lime?.[capability];
+      if (!explanation) {
+        return;
+      }
+      const section = document.createElement("section");
+      section.className = "lime-capability";
+      const heading = document.createElement("h4");
+      heading.textContent = `${capability === "repeatability" ? "Repeatability" : "Precision"} prediction ${formatValue(explanation.prediction)}`;
+      section.appendChild(heading);
+
+      const weights = explanation.feature_weights || {};
+      const maxAbs = Math.max(...Object.values(weights).map((value) => Math.abs(value)), 0.000001);
+      ["X", "Y", "Z"].forEach((feature) => {
+        const weight = Number(weights[feature] || 0);
+        const row = document.createElement("div");
+        row.className = "lime-row";
+        row.innerHTML = `
+          <span>${feature}</span>
+          <div class="lime-bar-track">
+            <i class="${weight >= 0 ? "positive" : "negative"}" style="width:${Math.min(100, Math.abs(weight) / maxAbs * 100)}%"></i>
+          </div>
+          <strong>${formatWeight(weight)}</strong>
+        `;
+        section.appendChild(row);
+      });
+
+      const summary = document.createElement("p");
+      summary.className = "lime-summary";
+      summary.textContent = `${explanation.strongest_feature} has the strongest local influence for ${capability}.`;
+      section.appendChild(summary);
+      card.appendChild(section);
+    });
+
+    limeResults.appendChild(card);
+  });
+}
+
+async function runLimeExplanation() {
+  if (!lastCoordinates.length) {
+    limeStatus.textContent = "Run a prediction first to generate LIME explanations.";
+    return;
+  }
+
+  try {
+    limeStatus.textContent = "Generating LIME explanations...";
+    const payload = await postJson(limeExplainUrl, { data: lastCoordinates });
+    lastLimeResult = payload;
+    limeStatus.textContent = "LIME explanations generated for the current XYZ task.";
+    renderLimeResults(payload);
+    appendRuleLog("LIME NN XAI explanations generated.");
+  } catch (error) {
+    lastLimeResult = null;
+    limeStatus.textContent = error.message;
+    limeResults.innerHTML = "";
+    appendRuleLog(`LIME explanation failed: ${error.message}`);
+  }
+}
+
 function refreshFileName(input) {
   const label = document.querySelector(`.file-name[data-for="${input.id}"]`);
   if (!label) {
@@ -307,6 +390,9 @@ function activateExplanationTab(tabId) {
   }
   if (tabId === "sparqlTab") {
     refreshQueryViewer();
+  }
+  if (tabId === "nnXaiTab" && lastCoordinates.length && !lastLimeResult) {
+    runLimeExplanation();
   }
 }
 
@@ -1348,6 +1434,7 @@ async function executePrediction() {
 
     lastResult = payload.data[0];
     lastCoordinates = coordinates;
+    lastLimeResult = null;
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
     });
@@ -1356,6 +1443,7 @@ async function executePrediction() {
     simulatedMode = false;
     resultText.textContent = formatResults(lastResult.model_outputs);
     simulationPanel.hidden = true;
+    runLimeExplanation();
     taskPanel.classList.add("dimmed");
     resultDialog.showModal();
   } catch (error) {
@@ -1432,6 +1520,7 @@ applySimulationButton.addEventListener("click", applySimulationValues);
 submitButton.addEventListener("click", submitOntologyUpdate);
 refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
+refreshLimeButton.addEventListener("click", runLimeExplanation);
 selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
 wholeGraphButton.addEventListener("click", renderWholeGraph);
 exportSvgButton.addEventListener("click", exportGraphSvg);
