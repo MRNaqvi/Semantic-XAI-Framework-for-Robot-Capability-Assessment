@@ -152,7 +152,7 @@
       </div>
 
       <div class="explanation-tabs" role="tablist" aria-label="Explanation views">
-        <button class="explanation-tab active" type="button" data-explanation-tab="factsTab">Facts</button>
+        <button class="explanation-tab active" type="button" data-explanation-tab="factsTab">Reasoned Facts</button>
         <button class="explanation-tab" type="button" data-explanation-tab="graphTab">Graph</button>
         <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Counterfactual</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nlTab">Natural Language</button>
@@ -174,13 +174,19 @@
       </section>
 
       <section class="explanation-panel active" id="factsTab">
-        <h2>Facts</h2>
+        <h2>Reasoned Facts</h2>
         <div id="factsList" class="facts-list"></div>
       </section>
 
       <section class="explanation-panel" id="graphTab" hidden>
-        <h2>Graph Explanation View</h2>
-        <svg id="factGraph" viewBox="0 0 760 360" role="img" aria-label="Fact explanation graph"></svg>
+        <div class="graph-head">
+          <h2>Graph Explanation View</h2>
+          <div class="graph-actions">
+            <button id="selectedGraphButton" class="pill small-pill active" type="button">Selected Fact</button>
+            <button id="wholeGraphButton" class="pill small-pill" type="button">Whole Graph</button>
+          </div>
+        </div>
+        <svg id="factGraph" viewBox="0 0 1100 420" role="img" aria-label="Fact explanation graph"></svg>
         <div id="tracePanel" class="trace-panel"></div>
       </section>
 

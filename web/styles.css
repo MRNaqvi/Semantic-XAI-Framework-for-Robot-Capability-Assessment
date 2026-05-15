@@ -687,9 +687,32 @@ body {
   cursor: pointer;
 }
 
+.graph-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.graph-head h2 {
+  margin: 0;
+}
+
+.graph-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.graph-actions .pill.active {
+  background: #d9f3fb;
+  color: #12212c;
+}
+
 #factGraph {
   width: 100%;
-  min-height: 280px;
+  min-height: 420px;
   border: 1px solid var(--field-border);
   border-radius: 6px;
   background: var(--field);
@@ -699,6 +722,16 @@ body {
   stroke: #c7c8d6;
   stroke-width: 3;
   opacity: 0.72;
+}
+
+.graph-edge-label {
+  fill: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--field);
+  stroke-width: 4px;
 }
 
 .graph-node circle {
@@ -717,6 +750,15 @@ body {
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.graph-node {
+  cursor: grab;
+}
+
+.graph-node:active {
+  cursor: grabbing;
 }
 
 .trace-panel {

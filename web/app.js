@@ -63,6 +63,8 @@ const modelStatus = document.querySelector("#modelStatus");
 const modelsFile = document.querySelector("#modelsFile");
 const explanationTabs = Array.from(document.querySelectorAll(".explanation-tab"));
 const explanationPanels = Array.from(document.querySelectorAll(".explanation-panel"));
+const selectedGraphButton = document.querySelector("#selectedGraphButton");
+const wholeGraphButton = document.querySelector("#wholeGraphButton");
 
 let lastResult = null;
 let lastFacts = [];
@@ -74,6 +76,7 @@ let ruleLogEntries = [];
 let activeOntologyName = defaultOntologyName;
 let activeRuleName = defaultRuleName;
 let activeModelNames = "No models loaded";
+let graphMode = "selected";
 
 function renderAssetStatus(errors = "") {
   ontologyStatus.textContent = `Ontology: ${activeOntologyName}`;
@@ -118,16 +121,6 @@ const factLabels = {
   "RCO:BestRobot": "Best robot",
   "RCO:WorstRobot": "Worst robot",
   "RCO:OptimalRobot": "Optimal robot",
-};
-
-const graphRuleLabels = {
-  "RCO:BestSuitableDueToRepeatability": "Minimum\nrepeatability\ncheck",
-  "RCO:BestSuitableDueToPrecision": "Maximum\nprecision\ncheck",
-  "RCO:LeastSuitableDueToRepeatability": "Maximum\nrepeatability\ncheck",
-  "RCO:LeastSuitableDueToPrecision": "Minimum\nprecision\ncheck",
-  "RCO:BestRobot": "Best robot\nrule",
-  "RCO:WorstRobot": "Worst robot\nrule",
-  "RCO:OptimalRobot": "Optimal robot\nrule",
 };
 
 const ruleDefinitions = [
@@ -441,6 +434,8 @@ function renderFacts(facts) {
       graphButton.textContent = "View Graph";
       graphButton.addEventListener("click", () => {
         selectedFact = fact;
+        graphMode = "selected";
+        updateGraphButtons();
         renderGraph(fact);
         activateExplanationTab("graphTab");
       });
@@ -484,77 +479,260 @@ function wrapGraphLabel(label, maxLength = 18) {
   return lines.join("\n");
 }
 
-function renderGraph(fact) {
+function wrapOntologyName(label) {
+  return label.replace(/([a-z])([A-Z])/g, "$1\n$2");
+}
+
+function renderSvgText(parent, lines, x, y, className, lineHeight = 14) {
+  const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  text.setAttribute("x", x);
+  text.setAttribute("y", y);
+  text.setAttribute("class", className);
+
+  lines.forEach((lineText, index) => {
+    const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    tspan.setAttribute("x", x);
+    tspan.setAttribute("dy", index === 0 ? "0" : lineHeight);
+    tspan.textContent = lineText;
+    text.appendChild(tspan);
+  });
+
+  parent.appendChild(text);
+  return text;
+}
+
+function updateGraphButtons() {
+  selectedGraphButton.classList.toggle("active", graphMode === "selected");
+  wholeGraphButton.classList.toggle("active", graphMode === "whole");
+}
+
+function svgPointFromEvent(event) {
+  const point = factGraph.createSVGPoint();
+  point.x = event.clientX;
+  point.y = event.clientY;
+  return point.matrixTransform(factGraph.getScreenCTM().inverse());
+}
+
+function renderTrace(items) {
+  tracePanel.innerHTML = "";
+  const list = document.createElement("ol");
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    list.appendChild(li);
+  });
+  tracePanel.appendChild(list);
+}
+
+function renderGraphCanvas(nodes, edges, traceItems) {
   factGraph.innerHTML = "";
   tracePanel.innerHTML = "";
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const edgeRefs = [];
 
-  if (!fact) {
-    tracePanel.textContent = "Select a fact to see the reasoning path.";
-    return;
+  function updateEdges() {
+    edgeRefs.forEach(({ edge, line, label }) => {
+      const a = nodeMap.get(edge.from);
+      const b = nodeMap.get(edge.to);
+      line.setAttribute("x1", a.x);
+      line.setAttribute("y1", a.y);
+      line.setAttribute("x2", b.x);
+      line.setAttribute("y2", b.y);
+      if (label) {
+        label.setAttribute("x", (a.x + b.x) / 2);
+        label.setAttribute("y", (a.y + b.y) / 2 - 10);
+        label.querySelectorAll("tspan").forEach((tspan) => {
+          tspan.setAttribute("x", (a.x + b.x) / 2);
+        });
+      }
+    });
   }
 
-  const robot = shortName(fact.robot);
-  const classification = factLabels[fact.type] || shortName(fact.type);
-  const modelResult = lastResult?.model_outputs?.find((item) =>
-    shortName(item.robot).toLowerCase().includes(robot.toLowerCase())
-  );
-
-  const nodes = [
-    { id: "robot", label: robot, x: 90, y: 180 },
-    { id: "repeatability", label: `Repeatability\n${formatValue(modelResult?.repeatability ?? 0)}`, x: 275, y: 100 },
-    { id: "precision", label: `Precision\n${formatValue(modelResult?.precision ?? 0)}`, x: 275, y: 260 },
-    { id: "rule", label: graphRuleLabels[fact.type] || "Suitability\nrule", x: 470, y: 180 },
-    { id: "fact", label: wrapGraphLabel(classification), x: 650, y: 180 },
-  ];
-
-  const edges = [
-    ["robot", "repeatability"],
-    ["robot", "precision"],
-    ["repeatability", "rule"],
-    ["precision", "rule"],
-    ["rule", "fact"],
-  ];
-
-  edges.forEach(([from, to]) => {
-    const a = nodes.find((node) => node.id === from);
-    const b = nodes.find((node) => node.id === to);
+  edges.forEach((edge) => {
+    const a = nodeMap.get(edge.from);
+    const b = nodeMap.get(edge.to);
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", a.x);
-    line.setAttribute("y1", a.y);
-    line.setAttribute("x2", b.x);
-    line.setAttribute("y2", b.y);
     line.setAttribute("class", "graph-edge");
     factGraph.appendChild(line);
+
+    const label = edge.label?.length
+      ? renderSvgText(
+          factGraph,
+          edge.label,
+          (a.x + b.x) / 2,
+          (a.y + b.y) / 2 - 10,
+          "graph-edge-label"
+        )
+      : null;
+    edgeRefs.push({ edge, line, label });
   });
 
   nodes.forEach((node) => {
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    group.setAttribute("class", node.id === "fact" ? "graph-node selected" : "graph-node");
+    const classes = ["graph-node"];
+    if (node.selected) {
+      classes.push("selected");
+    }
+    group.setAttribute("class", classes.join(" "));
+    group.setAttribute("transform", `translate(${node.x} ${node.y})`);
+    group.setAttribute("tabindex", "0");
 
     const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circle.setAttribute("cx", node.x);
-    circle.setAttribute("cy", node.y);
-    circle.setAttribute("r", node.id === "fact" ? "58" : node.id === "rule" ? "46" : "42");
+    circle.setAttribute("cx", 0);
+    circle.setAttribute("cy", 0);
+    circle.setAttribute("r", node.selected ? "50" : node.radius || "42");
     group.appendChild(circle);
 
     const lines = node.label.split("\n");
     lines.forEach((lineText, index) => {
-      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      text.setAttribute("x", node.x);
-      text.setAttribute("y", node.y + (index - (lines.length - 1) / 2) * 16);
-      text.textContent = lineText;
-      group.appendChild(text);
+      renderSvgText(
+        group,
+        [lineText],
+        0,
+        (index - (lines.length - 1) / 2) * 16,
+        "graph-node-label",
+        16
+      );
+    });
+
+    let offset = null;
+    group.addEventListener("pointerdown", (event) => {
+      const point = svgPointFromEvent(event);
+      offset = { x: point.x - node.x, y: point.y - node.y };
+      group.setPointerCapture(event.pointerId);
+    });
+    group.addEventListener("pointermove", (event) => {
+      if (!offset) {
+        return;
+      }
+      const point = svgPointFromEvent(event);
+      node.x = Math.max(50, Math.min(1050, point.x - offset.x));
+      node.y = Math.max(55, Math.min(365, point.y - offset.y));
+      group.setAttribute("transform", `translate(${node.x} ${node.y})`);
+      updateEdges();
+    });
+    group.addEventListener("pointerup", () => {
+      offset = null;
+    });
+    group.addEventListener("pointercancel", () => {
+      offset = null;
     });
 
     factGraph.appendChild(group);
   });
 
-  tracePanel.innerHTML = `
-    <ol>
-      <li>Based on Cartesian Coordinates X, Y, Z for a new task.</li>
-      <li>Predicted or simulated values are stored as <code>RCO:has_Measurement_Value</code>.</li>
-      <li>The selected fact is <code>${fact.type}</code> for <code>${fact.robot}</code>.</li>
-    </ol>`;
+  updateEdges();
+  renderTrace(traceItems);
+}
+
+function renderGraph(fact) {
+  graphMode = "selected";
+  updateGraphButtons();
+
+  if (!fact) {
+    factGraph.innerHTML = "";
+    tracePanel.innerHTML = "";
+    tracePanel.textContent = "Select a fact to see the reasoning path.";
+    return;
+  }
+
+  const robot = shortName(fact.robot);
+  const ontologyFactName = wrapOntologyName(shortName(fact.type));
+  const modelResult = lastResult?.model_outputs?.find((item) =>
+    shortName(item.robot).toLowerCase().includes(robot.toLowerCase())
+  );
+
+  const nodes = [
+    { id: "robot", label: robot, x: 150, y: 210 },
+    { id: "repeatabilityCapability", label: "Operational\nRepeatability\nCapability", x: 390, y: 95 },
+    { id: "precisionCapability", label: "Operational\nPrecision\nCapability", x: 390, y: 325 },
+    { id: "repeatabilityValue", label: formatValue(modelResult?.repeatability ?? 0), x: 730, y: 95 },
+    { id: "precisionValue", label: formatValue(modelResult?.precision ?? 0), x: 730, y: 325 },
+    { id: "fact", label: ontologyFactName, x: 730, y: 210, selected: true },
+  ];
+
+  const edges = [
+    { from: "robot", to: "repeatabilityCapability", label: ["RCO:hasCapability"] },
+    { from: "robot", to: "precisionCapability", label: ["RCO:hasCapability"] },
+    { from: "repeatabilityCapability", to: "repeatabilityValue", label: ["RCO:has_Measurement_Value"] },
+    { from: "precisionCapability", to: "precisionValue", label: ["RCO:has_Measurement_Value"] },
+    { from: "robot", to: "fact", label: ["rdf:type"] },
+  ];
+
+  renderGraphCanvas(nodes, edges, [
+    "Based on Cartesian Coordinates X, Y, Z for a new task.",
+    "Predicted or simulated values are stored as RCO:has_Measurement_Value.",
+    `The selected fact is ${shortName(fact.robot)} rdf:type ${shortName(fact.type)}.`,
+  ]);
+}
+
+function renderWholeGraph() {
+  graphMode = "whole";
+  updateGraphButtons();
+
+  if (!lastResult?.model_outputs?.length) {
+    factGraph.innerHTML = "";
+    tracePanel.textContent = "Run a prediction first to build the current graph.";
+    return;
+  }
+
+  const nodes = [];
+  const edges = [];
+  const robotX = 130;
+  const capabilityX = 390;
+  const valueX = 650;
+  const factX = 930;
+
+  lastResult.model_outputs.forEach((result, index) => {
+    const robot = shortName(result.robot || result.model);
+    const y = 90 + index * 120;
+    const robotId = `robot-${index}`;
+    const repeatabilityId = `repeatability-${index}`;
+    const precisionId = `precision-${index}`;
+    const repeatabilityValueId = `repeatability-value-${index}`;
+    const precisionValueId = `precision-value-${index}`;
+
+    nodes.push(
+      { id: robotId, label: robot, x: robotX, y },
+      { id: repeatabilityId, label: "Operational\nRepeatability\nCapability", x: capabilityX, y: y - 35 },
+      { id: precisionId, label: "Operational\nPrecision\nCapability", x: capabilityX, y: y + 35 },
+      { id: repeatabilityValueId, label: formatValue(result.repeatability), x: valueX, y: y - 35 },
+      { id: precisionValueId, label: formatValue(result.precision), x: valueX, y: y + 35 }
+    );
+
+    edges.push(
+      { from: robotId, to: repeatabilityId, label: ["RCO:hasCapability"] },
+      { from: robotId, to: precisionId, label: ["RCO:hasCapability"] },
+      { from: repeatabilityId, to: repeatabilityValueId, label: ["RCO:has_Measurement_Value"] },
+      { from: precisionId, to: precisionValueId, label: ["RCO:has_Measurement_Value"] }
+    );
+  });
+
+  lastFacts.forEach((fact, index) => {
+    const robot = shortName(fact.robot);
+    const robotIndex = lastResult.model_outputs.findIndex((result) =>
+      shortName(result.robot || result.model).toLowerCase() === robot.toLowerCase()
+    );
+    if (robotIndex < 0) {
+      return;
+    }
+    const factId = `fact-${index}`;
+    const robotId = `robot-${robotIndex}`;
+    nodes.push({
+      id: factId,
+      label: wrapOntologyName(shortName(fact.type)),
+      x: factX,
+      y: 70 + index * 52,
+      selected: selectedFact?.type === fact.type && selectedFact?.robot === fact.robot,
+    });
+    edges.push({ from: robotId, to: factId, label: ["rdf:type"] });
+  });
+
+  renderGraphCanvas(nodes, edges, [
+    "This whole graph shows the current robots, capability measurement values, and reasoned facts.",
+    "Drag nodes to inspect the relationships.",
+    "Reasoned facts are shown as robot rdf:type ontology fact edges.",
+  ]);
 }
 
 async function refreshFacts(target = "after") {
@@ -956,6 +1134,8 @@ applySimulationButton.addEventListener("click", applySimulationValues);
 submitButton.addEventListener("click", submitOntologyUpdate);
 refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
+selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
+wholeGraphButton.addEventListener("click", renderWholeGraph);
 cancelButton.addEventListener("click", closeDialog);
 okButton.addEventListener("click", closeDialog);
 uploadOntologyButton.addEventListener("click", () => ontologyFile.click());
