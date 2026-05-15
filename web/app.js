@@ -66,6 +66,8 @@ const explanationTabs = Array.from(document.querySelectorAll(".explanation-tab")
 const explanationPanels = Array.from(document.querySelectorAll(".explanation-panel"));
 const selectedGraphButton = document.querySelector("#selectedGraphButton");
 const wholeGraphButton = document.querySelector("#wholeGraphButton");
+const exportSvgButton = document.querySelector("#exportSvgButton");
+const exportPngButton = document.querySelector("#exportPngButton");
 const graphFiltersPanel = document.querySelector("#graphFilters");
 const graphFilterInputs = Array.from(document.querySelectorAll("[data-graph-filter]"));
 const selectedRobotOnlyFilter = document.querySelector("#selectedRobotOnlyFilter");
@@ -1036,6 +1038,67 @@ function exportReport() {
   URL.revokeObjectURL(url);
 }
 
+function downloadBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function getGraphSvgText() {
+  const clone = factGraph.cloneNode(true);
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  const styles = Array.from(document.styleSheets)
+    .flatMap((sheet) => {
+      try {
+        return Array.from(sheet.cssRules || []);
+      } catch {
+        return [];
+      }
+    })
+    .map((rule) => rule.cssText)
+    .filter((rule) => rule.includes("graph-") || rule.includes("factGraph"))
+    .join("\n");
+  const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
+  style.textContent = styles;
+  clone.insertBefore(style, clone.firstChild);
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function exportGraphSvg() {
+  const svgText = getGraphSvgText();
+  downloadBlob(new Blob([svgText], { type: "image/svg+xml" }), `s-xai-${graphMode}-graph.svg`);
+}
+
+function exportGraphPng() {
+  const svgText = getGraphSvgText();
+  const image = new Image();
+  const url = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml" }));
+  const viewBox = factGraph.viewBox.baseVal;
+  image.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.ceil(viewBox.width * 2));
+    canvas.height = Math.max(1, Math.ceil(viewBox.height * 2));
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#202739";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        downloadBlob(blob, `s-xai-${graphMode}-graph.png`);
+      }
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    statusText.textContent = "Graph PNG export failed.";
+  };
+  image.src = url;
+}
+
 function buildOntologyUpdateQuery(modelOutputs) {
   const updates = modelOutputs.flatMap((result) => result.ontology_updates);
   const values = updates
@@ -1358,6 +1421,8 @@ refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
 selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
 wholeGraphButton.addEventListener("click", renderWholeGraph);
+exportSvgButton.addEventListener("click", exportGraphSvg);
+exportPngButton.addEventListener("click", exportGraphPng);
 graphFilterInputs.forEach((input) => {
   input.addEventListener("change", () => {
     updateGraphFilters();
