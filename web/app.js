@@ -569,7 +569,7 @@ function renderGraphCanvas(nodes, edges, traceItems) {
 
   nodes.forEach((node) => {
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    const classes = ["graph-node"];
+    const classes = ["graph-node", node.kind || "default"];
     if (node.selected) {
       classes.push("selected");
     }
@@ -643,12 +643,12 @@ function renderGraph(fact) {
   );
 
   const nodes = [
-    { id: "robot", label: robot, x: 150, y: 210 },
-    { id: "repeatabilityCapability", label: "Operational\nRepeatability\nCapability", x: 390, y: 95 },
-    { id: "precisionCapability", label: "Operational\nPrecision\nCapability", x: 390, y: 325 },
-    { id: "repeatabilityValue", label: formatValue(modelResult?.repeatability ?? 0), x: 730, y: 95 },
-    { id: "precisionValue", label: formatValue(modelResult?.precision ?? 0), x: 730, y: 325 },
-    { id: "fact", label: ontologyFactName, x: 730, y: 210, selected: true },
+    { id: "robot", label: robot, x: 150, y: 210, kind: "robot" },
+    { id: "repeatabilityCapability", label: "Operational\nRepeatability\nCapability", x: 390, y: 95, kind: "capability" },
+    { id: "precisionCapability", label: "Operational\nPrecision\nCapability", x: 390, y: 325, kind: "capability" },
+    { id: "repeatabilityValue", label: formatValue(modelResult?.repeatability ?? 0), x: 730, y: 95, kind: "value" },
+    { id: "precisionValue", label: formatValue(modelResult?.precision ?? 0), x: 730, y: 325, kind: "value" },
+    { id: "fact", label: ontologyFactName, x: 730, y: 210, kind: "fact", selected: true },
   ];
 
   const edges = [
@@ -693,11 +693,11 @@ function renderWholeGraph() {
     const precisionValueId = `precision-value-${index}`;
 
     nodes.push(
-      { id: robotId, label: robot, x: robotX, y },
-      { id: repeatabilityId, label: "Operational\nRepeatability\nCapability", x: capabilityX, y: y - 35 },
-      { id: precisionId, label: "Operational\nPrecision\nCapability", x: capabilityX, y: y + 35 },
-      { id: repeatabilityValueId, label: formatValue(result.repeatability), x: valueX, y: y - 35 },
-      { id: precisionValueId, label: formatValue(result.precision), x: valueX, y: y + 35 }
+      { id: robotId, label: robot, x: robotX, y, kind: "robot" },
+      { id: repeatabilityId, label: "Operational\nRepeatability\nCapability", x: capabilityX, y: y - 35, kind: "capability" },
+      { id: precisionId, label: "Operational\nPrecision\nCapability", x: capabilityX, y: y + 35, kind: "capability" },
+      { id: repeatabilityValueId, label: formatValue(result.repeatability), x: valueX, y: y - 35, kind: "value" },
+      { id: precisionValueId, label: formatValue(result.precision), x: valueX, y: y + 35, kind: "value" }
     );
 
     edges.push(
@@ -723,6 +723,7 @@ function renderWholeGraph() {
       label: wrapOntologyName(shortName(fact.type)),
       x: factX,
       y: 70 + index * 52,
+      kind: "fact",
       selected: selectedFact?.type === fact.type && selectedFact?.robot === fact.robot,
     });
     edges.push({ from: robotId, to: factId, label: ["rdf:type"] });

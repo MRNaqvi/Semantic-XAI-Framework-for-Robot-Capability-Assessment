@@ -710,6 +710,55 @@ body {
   color: #12212c;
 }
 
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.graph-legend span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.legend-dot {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #444b52;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.robot {
+  background: #d9f3fb;
+}
+
+.legend-dot.capability {
+  background: #dcf7df;
+}
+
+.legend-dot.value {
+  background: #fff4cf;
+}
+
+.legend-dot.fact {
+  background: #f0a3a1;
+}
+
+.legend-line {
+  width: 24px;
+  height: 3px;
+  border-radius: 999px;
+  background: #c7c8d6;
+  display: inline-block;
+}
+
 #factGraph {
   width: 100%;
   min-height: 420px;
@@ -738,6 +787,18 @@ body {
   fill: #d9f3fb;
   stroke: #444b52;
   stroke-width: 8;
+}
+
+.graph-node.capability circle {
+  fill: #dcf7df;
+}
+
+.graph-node.value circle {
+  fill: #fff4cf;
+}
+
+.graph-node.fact circle {
+  fill: #e5d8ff;
 }
 
 .graph-node.selected circle {
