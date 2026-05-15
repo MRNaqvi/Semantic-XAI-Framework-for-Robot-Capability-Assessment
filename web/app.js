@@ -7,6 +7,7 @@ const uploadRuleUrl = "http://localhost:11191/api/Query/UploadRule";
 const modelStatusUrl = "http://127.0.0.1:5000/models/status";
 const uploadModelsUrl = "http://127.0.0.1:5000/models/upload";
 const limeExplainUrl = "http://127.0.0.1:5000/explain/lime";
+const shapExplainUrl = "http://127.0.0.1:5000/explain/shap";
 
 const robotOrder = ["IRB 1200", "IRB 2400", "Ned 2"];
 const robotDisplayName = {
@@ -56,6 +57,12 @@ const afterFacts = document.querySelector("#afterFacts");
 const limeStatus = document.querySelector("#limeStatus");
 const limeResults = document.querySelector("#limeResults");
 const selectedFactXai = document.querySelector("#selectedFactXai");
+const xaiStabilityPanel = document.querySelector("#xaiStabilityPanel");
+const xaiQualityPanel = document.querySelector("#xaiQualityPanel");
+const counterfactualSuggestion = document.querySelector("#counterfactualSuggestion");
+const refreshShapButton = document.querySelector("#refreshShapButton");
+const shapStatus = document.querySelector("#shapStatus");
+const shapResults = document.querySelector("#shapResults");
 const factsQueryText = document.querySelector("#factsQueryText");
 const updateQueryText = document.querySelector("#updateQueryText");
 const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
@@ -82,6 +89,7 @@ const selectedRobotOnlyFilter = document.querySelector("#selectedRobotOnlyFilter
 let lastResult = null;
 let lastCoordinates = [];
 let lastLimeResult = null;
+let lastShapResult = null;
 let lastFacts = [];
 let baselineFacts = [];
 let simulatedFacts = [];
@@ -349,6 +357,8 @@ function renderLimeResults(payload) {
     limeResults.appendChild(card);
   });
   renderSelectedFactXai();
+  renderXaiStability();
+  renderExplanationQuality();
 }
 
 async function runLimeExplanation() {
@@ -369,7 +379,88 @@ async function runLimeExplanation() {
     limeStatus.textContent = error.message;
     limeResults.innerHTML = "";
     renderSelectedFactXai();
+    renderXaiStability();
+    renderExplanationQuality();
     appendRuleLog(`LIME explanation failed: ${error.message}`);
+  }
+}
+
+function renderShapResults(payload) {
+  shapResults.innerHTML = "";
+  const explanations = payload?.data?.explanations || [];
+  if (!explanations.length) {
+    shapResults.textContent = "No SHAP explanations available.";
+    return;
+  }
+
+  explanations.forEach((robotExplanation) => {
+    const card = document.createElement("article");
+    card.className = "lime-card";
+    const title = document.createElement("h3");
+    title.textContent = robotDisplayName[robotExplanation.model] || robotExplanation.model;
+    card.appendChild(title);
+
+    ["repeatability", "precision"].forEach((capability) => {
+      const shapExplanation = robotExplanation.shap?.[capability];
+      const limeExplanation = getLimeForModel({ model: robotExplanation.model, robot: robotExplanation.robot })?.lime?.[capability];
+      if (!shapExplanation) {
+        return;
+      }
+
+      const section = document.createElement("section");
+      section.className = "lime-capability";
+      const heading = document.createElement("h4");
+      heading.textContent = `${capability === "repeatability" ? "Repeatability" : "Precision"} SHAP attribution`;
+      section.appendChild(heading);
+
+      const rows = makeInfluenceRows(shapExplanation);
+      const maxAbs = Math.max(...rows.map((item) => Math.abs(item.weight)), 0.000001);
+      rows.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "lime-row";
+        row.innerHTML = `
+          <span>${item.feature}</span>
+          <div class="lime-bar-track">
+            <i class="${item.weight >= 0 ? "positive" : "negative"}" style="width:${Math.min(100, Math.abs(item.weight) / maxAbs * 100)}%"></i>
+          </div>
+          <strong>${formatWeight(item.weight)}</strong>
+        `;
+        section.appendChild(row);
+      });
+
+      const comparison = document.createElement("p");
+      comparison.className = "lime-summary";
+      comparison.textContent = limeExplanation
+        ? `LIME strongest feature: ${limeExplanation.strongest_feature}. SHAP strongest feature: ${shapExplanation.strongest_feature}.`
+        : `SHAP strongest feature: ${shapExplanation.strongest_feature}.`;
+      section.appendChild(comparison);
+      card.appendChild(section);
+    });
+
+    shapResults.appendChild(card);
+  });
+}
+
+async function runShapExplanation() {
+  if (!lastCoordinates.length) {
+    shapStatus.textContent = "Run a prediction first to generate SHAP explanations.";
+    return;
+  }
+
+  try {
+    shapStatus.textContent = "Generating SHAP explanations...";
+    const payload = await postJson(shapExplainUrl, { data: lastCoordinates });
+    lastShapResult = payload;
+    shapStatus.textContent = "SHAP explanations generated for the current XYZ task.";
+    renderShapResults(payload);
+    renderExplanationQuality();
+    appendRuleLog("SHAP NN XAI explanations generated.");
+  } catch (error) {
+    lastShapResult = null;
+    shapStatus.textContent = error.message;
+    shapResults.innerHTML = "";
+    renderExplanationQuality();
+    appendRuleLog(`SHAP explanation unavailable: ${error.message}`);
   }
 }
 
@@ -438,6 +529,127 @@ function makeLimeInterpretation(robot, capability, explanation) {
   return `Near this Cartesian task point, ${robot} ${capabilityName(capability)} is most sensitive to ${strongest}. ${strongest} ${explainInfluenceDirection(strongestWeight, capability)}`;
 }
 
+function getInfluenceStability(explanation) {
+  const rows = makeInfluenceRows(explanation);
+  const strongest = rows[0] || { feature: "X", weight: 0 };
+  const second = rows[1] || { feature: "Y", weight: 0 };
+  const strongestAbs = Math.abs(strongest.weight);
+  const secondAbs = Math.abs(second.weight);
+  const ratio = strongestAbs / Math.max(secondAbs, 0.000001);
+  const label = strongestAbs < 0.000001
+    ? "Low"
+    : ratio >= 1.6
+      ? "High"
+      : ratio >= 1.15
+        ? "Medium"
+        : "Low";
+
+  return {
+    label,
+    strongest: strongest.feature,
+    ratio,
+  };
+}
+
+function renderXaiStability() {
+  if (!xaiStabilityPanel) {
+    return;
+  }
+
+  xaiStabilityPanel.innerHTML = "<h3>XAI Confidence / Stability</h3>";
+  const explanations = lastLimeResult?.data?.explanations || [];
+  if (!explanations.length) {
+    const message = document.createElement("p");
+    message.textContent = "Run LIME to estimate whether the strongest local feature is stable for this XYZ task.";
+    xaiStabilityPanel.appendChild(message);
+    return;
+  }
+
+  const list = document.createElement("ul");
+  explanations.forEach((robotExplanation) => {
+    ["repeatability", "precision"].forEach((capability) => {
+      const explanation = robotExplanation.lime?.[capability];
+      if (!explanation) {
+        return;
+      }
+      const stability = getInfluenceStability(explanation);
+      const item = document.createElement("li");
+      item.textContent = `${robotDisplayName[robotExplanation.model] || robotExplanation.model} ${capabilityName(capability)}: ${stability.label} stability, strongest feature ${stability.strongest}.`;
+      list.appendChild(item);
+    });
+  });
+  xaiStabilityPanel.appendChild(list);
+}
+
+function renderExplanationQuality() {
+  if (!xaiQualityPanel) {
+    return;
+  }
+
+  const rows = [
+    ["Ontology fact", lastFacts.length ? "available" : "refresh facts"],
+    ["Datalog rule result", selectedFact ? "selected fact available" : "select a fact"],
+    ["NN prediction", lastResult ? "available" : "run prediction"],
+    ["LIME local explanation", lastLimeResult ? "available" : "run LIME"],
+    ["SHAP attribution", lastShapResult ? "available" : "optional or unavailable"],
+    ["OpenAI NL explanation", nlExplanation.textContent && !nlExplanation.textContent.includes("Add your OpenAI API key") ? "available" : "add API key / explain fact"],
+  ];
+
+  xaiQualityPanel.innerHTML = "<h3>Explanation Quality</h3>";
+  const list = document.createElement("dl");
+  rows.forEach(([name, status]) => {
+    const dt = document.createElement("dt");
+    dt.textContent = name;
+    const dd = document.createElement("dd");
+    dd.textContent = status;
+    list.append(dt, dd);
+  });
+  xaiQualityPanel.appendChild(list);
+}
+
+function renderCounterfactualSuggestion() {
+  if (!counterfactualSuggestion) {
+    return;
+  }
+
+  counterfactualSuggestion.innerHTML = "<h3>What Must Change?</h3>";
+  if (!selectedFact || !lastResult?.model_outputs?.length) {
+    const message = document.createElement("p");
+    message.textContent = "Select a reasoned fact to see which capability value would need to change for a different suitability result.";
+    counterfactualSuggestion.appendChild(message);
+    return;
+  }
+
+  const factName = shortName(selectedFact.type).toLowerCase();
+  const modelResult = findModelResultForFact(selectedFact);
+  if (!modelResult) {
+    const message = document.createElement("p");
+    message.textContent = "No model result is available for the selected fact.";
+    counterfactualSuggestion.appendChild(message);
+    return;
+  }
+
+  const capability = factName.includes("precision") ? "precision" : "repeatability";
+  const lowerIsBetter = capability === "repeatability";
+  const sorted = [...lastResult.model_outputs].sort((a, b) =>
+    lowerIsBetter ? a[capability] - b[capability] : b[capability] - a[capability]
+  );
+  const selectedIndex = sorted.findIndex((item) => item.model === modelResult.model);
+  const competitor = sorted[selectedIndex === 0 ? 1 : 0];
+  const selectedValue = Number(modelResult[capability]);
+  const competitorValue = Number(competitor?.[capability]);
+  const epsilon = 0.000001;
+  const target = lowerIsBetter
+    ? competitorValue + (selectedIndex === 0 ? epsilon : -epsilon)
+    : competitorValue - (selectedIndex === 0 ? epsilon : -epsilon);
+  const direction = target > selectedValue ? "increase" : "decrease";
+  const delta = Math.abs(target - selectedValue);
+
+  const message = document.createElement("p");
+  message.textContent = `${robotDisplayName[modelResult.model] || modelResult.model} would need to ${direction} its ${capabilityName(capability)} value by about ${formatWeight(delta)} mm to cross the nearest decision boundary against ${robotDisplayName[competitor?.model] || competitor?.model}.`;
+  counterfactualSuggestion.appendChild(message);
+}
+
 function renderSelectedFactXai(fact = selectedFact) {
   if (!selectedFactXai) {
     return;
@@ -452,6 +664,8 @@ function renderSelectedFactXai(fact = selectedFact) {
     const message = document.createElement("p");
     message.textContent = "Select a reasoned fact to see which neural-network prediction and XYZ feature influences contributed to it.";
     selectedFactXai.appendChild(message);
+    renderCounterfactualSuggestion();
+    renderExplanationQuality();
     return;
   }
 
@@ -468,6 +682,8 @@ function renderSelectedFactXai(fact = selectedFact) {
     const message = document.createElement("p");
     message.textContent = "No model prediction is available for this robot yet.";
     selectedFactXai.appendChild(message);
+    renderCounterfactualSuggestion();
+    renderExplanationQuality();
     return;
   }
 
@@ -475,6 +691,8 @@ function renderSelectedFactXai(fact = selectedFact) {
     const message = document.createElement("p");
     message.textContent = "Run or refresh LIME to see the XYZ feature influences for this selected fact.";
     selectedFactXai.appendChild(message);
+    renderCounterfactualSuggestion();
+    renderExplanationQuality();
     return;
   }
 
@@ -512,6 +730,8 @@ function renderSelectedFactXai(fact = selectedFact) {
   });
 
   selectedFactXai.appendChild(list);
+  renderCounterfactualSuggestion();
+  renderExplanationQuality();
 }
 
 function refreshFileName(input) {
@@ -542,6 +762,10 @@ function activateExplanationTab(tabId) {
   }
   if (tabId === "nnXaiTab" && lastCoordinates.length && !lastLimeResult) {
     runLimeExplanation();
+  }
+  if (tabId === "nnXaiTab") {
+    renderXaiStability();
+    renderExplanationQuality();
   }
 }
 
@@ -818,16 +1042,16 @@ function buildSelectedFactTrace(fact, modelResult) {
       : `repeatability ${repeatability} and precision ${precision}`;
 
   return [
-    `Task input: Cartesian Coordinates X, Y, Z = ${xyz}.`,
-    `Robot considered: ${robotName}.`,
-    `Operational repeatability capability measurement: ${repeatability} mm. Source: ${source}.`,
-    `Operational precision capability measurement: ${precision} mm. Source: ${source}.`,
+    `1. User task: Cartesian Coordinates X, Y, Z = ${xyz}.`,
+    `2. Robot considered: ${robotName}.`,
+    `3. NN or simulated measurement: repeatability ${repeatability} mm and precision ${precision} mm. Source: ${source}.`,
     ...(modelResult?.modelBaseline
-      ? [`Original NN model values before simulation: repeatability ${baselineRepeatability} mm, precision ${baselinePrecision} mm.`]
+      ? [`4. Counterfactual baseline: original NN values before simulation were repeatability ${baselineRepeatability} mm and precision ${baselinePrecision} mm.`]
       : []),
-    "The measurements are written in the Knowledge Graph using RCO:has_Measurement_Value.",
-    `The Datalog rules compare robot capability measurements; this fact is supported by the ${capabilityFocus}.`,
-    `Reasoned fact: ${robotName} rdf:type ${factName}.`,
+    "5. KG update: the measurements are written using RCO:has_Measurement_Value.",
+    `6. Datalog reasoning: rules compare robot capability measurements; this fact is supported by the ${capabilityFocus}.`,
+    `7. Reasoned fact: ${robotName} rdf:type ${factName}.`,
+    "8. Explanation layer: graph, facts, LIME/SHAP, counterfactuals, and NL explanation describe the same reasoning path.",
   ];
 }
 
@@ -1107,14 +1331,16 @@ function renderWholeGraph() {
     const precisionId = `precision-${index}`;
     const repeatabilityValueId = `repeatability-value-${index}`;
     const precisionValueId = `precision-value-${index}`;
+    const isSelectedRobot = selectedFact &&
+      robot.toLowerCase() === selectedRobotName;
 
     if (graphFilters.robot) {
-      nodes.push({ id: robotId, label: robot, x: robotX, y, kind: "robot" });
+      nodes.push({ id: robotId, label: robot, x: robotX, y, kind: "robot", selected: isSelectedRobot });
     }
     if (graphFilters.capability) {
       nodes.push(
-        { id: repeatabilityId, label: "Operational\nRepeatability\nCapability", x: capabilityX, y: y - 35, kind: "capability" },
-        { id: precisionId, label: "Operational\nPrecision\nCapability", x: capabilityX, y: y + 35, kind: "capability" }
+        { id: repeatabilityId, label: "Operational\nRepeatability\nCapability", x: capabilityX, y: y - 35, kind: "capability", selected: isSelectedRobot },
+        { id: precisionId, label: "Operational\nPrecision\nCapability", x: capabilityX, y: y + 35, kind: "capability", selected: isSelectedRobot }
       );
     }
     if (graphFilters.value) {
@@ -1128,6 +1354,7 @@ function renderWholeGraph() {
           kind: valueKind,
           source: result.source || "NN Model prediction",
           baselineValue: result.modelBaseline ? formatValue(result.modelBaseline.repeatability) : "",
+          selected: isSelectedRobot,
         },
         {
           id: precisionValueId,
@@ -1137,6 +1364,7 @@ function renderWholeGraph() {
           kind: valueKind,
           source: result.source || "NN Model prediction",
           baselineValue: result.modelBaseline ? formatValue(result.modelBaseline.precision) : "",
+          selected: isSelectedRobot,
         }
       );
     }
@@ -1225,6 +1453,8 @@ async function refreshFacts(target = "after") {
     beforeFacts.textContent = factsToText(baselineFacts);
     afterFacts.textContent = factsToText(simulatedFacts);
     renderFacts(lastFacts);
+    renderCounterfactualSuggestion();
+    renderExplanationQuality();
     appendRuleLog(`Facts refreshed: ${lastFacts.length} fact(s) loaded for ${target} view.`);
   } catch (error) {
     statusText.textContent = error.message;
@@ -1252,8 +1482,10 @@ async function explainFact(fact) {
       "No natural language explanation returned.";
 
     nlExplanation.textContent = explanation;
+    renderExplanationQuality();
   } catch (error) {
     nlExplanation.textContent = error.message;
+    renderExplanationQuality();
   }
 }
 
@@ -1334,37 +1566,81 @@ function selectedFactXaiReportText() {
   return lines.join("\n");
 }
 
-function exportReport() {
-  const report = [
-    "Robot Operational Capability Report",
-    "",
-    "Current task:",
-    xyzInput.value || "No task entered.",
-    "",
-    "Capability values:",
-    lastResult ? formatResults(lastResult.model_outputs) : "No model results.",
-    "",
-    "Before simulation facts:",
-    factsToText(baselineFacts),
-    "",
-    "After simulation facts:",
-    factsToText(simulatedFacts),
-    "",
-    "NN XAI LIME feature influence:",
-    limeReportText(),
-    "",
-    "Selected fact NN contribution:",
-    selectedFactXaiReportText(),
-    "",
-    "Selected explanation:",
-    nlExplanation.textContent,
-  ].join("\n");
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
-  const blob = new Blob([report], { type: "text/plain" });
+function shapReportText() {
+  const explanations = lastShapResult?.data?.explanations || [];
+  if (!explanations.length) {
+    return "No SHAP explanations generated or SHAP is unavailable.";
+  }
+
+  return explanations
+    .map((robotExplanation) => {
+      const robot = robotDisplayName[robotExplanation.model] || robotExplanation.model;
+      const rows = ["repeatability", "precision"].map((capability) => {
+        const explanation = robotExplanation.shap?.[capability];
+        if (!explanation) {
+          return "";
+        }
+        return [
+          `  ${capability === "repeatability" ? "Repeatability" : "Precision"} strongest feature: ${explanation.strongest_feature}`,
+          ...makeInfluenceRows(explanation).map((item) => `    ${item.feature}: ${formatWeight(item.weight)}`),
+        ].join("\n");
+      }).filter(Boolean);
+      return [`${robot}:`, ...rows].join("\n");
+    })
+    .join("\n\n");
+}
+
+function buildReportHtml() {
+  const graphSvg = selectedFact ? getGraphSvgText() : "";
+  const sections = [
+    ["Current task", xyzInput.value || "No task entered."],
+    ["Capability values", lastResult ? formatResults(lastResult.model_outputs) : "No model results."],
+    ["Before simulation facts", factsToText(baselineFacts)],
+    ["After simulation facts", factsToText(simulatedFacts)],
+    ["NN XAI LIME feature influence", limeReportText()],
+    ["Optional SHAP attribution", shapReportText()],
+    ["Selected fact NN contribution", selectedFactXaiReportText()],
+    ["Selected natural language explanation", nlExplanation.textContent],
+    ["SPARQL reasoned facts query", makeFactsQuery()],
+    ["Knowledge Graph update query", lastResult?.ontology_update_query || "No update query generated."],
+  ];
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>S-XAI Robot Operational Capability Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2633; }
+    h1 { margin-top: 0; }
+    section { margin: 22px 0; padding: 16px; border: 1px solid #ccd4df; border-radius: 8px; }
+    pre { white-space: pre-wrap; background: #f5f7fb; padding: 12px; border-radius: 6px; overflow: auto; }
+    svg { max-width: 100%; height: auto; background: #202638; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>S-XAI Robot Operational Capability Report</h1>
+  <p>Generated from the current S-XAI task, Knowledge Graph facts, Datalog reasoning, and NN XAI explanations.</p>
+  ${graphSvg ? `<section><h2>Graph Snapshot</h2>${graphSvg}</section>` : ""}
+  ${sections.map(([title, content]) => `<section><h2>${escapeHtml(title)}</h2><pre>${escapeHtml(content)}</pre></section>`).join("\n")}
+</body>
+</html>`;
+}
+
+function exportReport() {
+  const blob = new Blob([buildReportHtml()], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "robot-operational-capability-report.txt";
+  link.download = "s-xai-robot-operational-capability-report.html";
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -1564,6 +1840,8 @@ function applySimulationValues() {
 
   refreshResultFromCurrentValues();
   simulatedMode = true;
+  renderCounterfactualSuggestion();
+  renderExplanationQuality();
   simulationPanel.hidden = true;
   statusText.textContent =
     "Simulated operational capability values are ready to submit.";
@@ -1669,10 +1947,14 @@ async function executePrediction() {
     lastResult = payload.data[0];
     lastCoordinates = coordinates;
     lastLimeResult = null;
+    lastShapResult = null;
+    shapResults.innerHTML = "";
+    shapStatus.textContent = "SHAP is optional. Run SHAP after prediction if you want LIME vs SHAP comparison.";
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
     });
     refreshQueryViewer();
+    renderExplanationQuality();
     appendRuleLog(`NN model prediction completed for XYZ: ${coordinates.join(", ")}.`);
     simulatedMode = false;
     resultText.textContent = formatResults(lastResult.model_outputs);
@@ -1755,6 +2037,7 @@ submitButton.addEventListener("click", submitOntologyUpdate);
 refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
 refreshLimeButton.addEventListener("click", runLimeExplanation);
+refreshShapButton.addEventListener("click", runShapExplanation);
 selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
 wholeGraphButton.addEventListener("click", renderWholeGraph);
 exportSvgButton.addEventListener("click", exportGraphSvg);
@@ -1796,5 +2079,8 @@ xyzInput.addEventListener("keydown", (event) => {
 
 renderRules();
 renderGraph(null);
+renderXaiStability();
+renderCounterfactualSuggestion();
+renderExplanationQuality();
 refreshModelStatus();
 uploadKnowledgeBase();

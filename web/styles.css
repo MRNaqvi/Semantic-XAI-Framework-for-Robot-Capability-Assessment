@@ -979,6 +979,58 @@ body {
   gap: 12px;
 }
 
+.xai-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.xai-panel {
+  padding: 14px;
+  border: 1px solid rgba(204, 243, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.xai-panel h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.xai-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.xai-panel ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.xai-panel li {
+  margin: 0 0 6px;
+  color: var(--text);
+}
+
+.xai-panel dl {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) minmax(0, 1fr);
+  gap: 7px 12px;
+  margin: 0;
+}
+
+.xai-panel dt {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.xai-panel dd {
+  margin: 0;
+  color: var(--text);
+}
+
 .selected-fact-xai {
   border: 1px solid rgba(204, 243, 255, 0.28);
   background: rgba(18, 34, 49, 0.72);

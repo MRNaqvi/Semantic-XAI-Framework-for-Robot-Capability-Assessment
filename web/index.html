@@ -173,6 +173,10 @@
             <pre id="afterFacts">No facts loaded.</pre>
           </div>
         </div>
+        <section id="counterfactualSuggestion" class="xai-panel">
+          <h3>What Must Change?</h3>
+          <p>Run a prediction and select a fact to see which robot capability would need to change for a different suitability result.</p>
+        </section>
       </section>
 
       <section class="explanation-panel active" id="factsTab">
@@ -225,9 +229,27 @@
         </div>
         <p class="xai-note">LIME explains the local NN prediction around the current X, Y, Z task using feature weights for X, Y, and Z.</p>
         <div id="limeStatus" class="status-text"></div>
+        <div class="xai-dashboard-grid">
+          <section id="xaiStabilityPanel" class="xai-panel">
+            <h3>XAI Confidence / Stability</h3>
+            <p>Run LIME to estimate whether the strongest local feature is stable for this XYZ task.</p>
+          </section>
+          <section id="xaiQualityPanel" class="xai-panel">
+            <h3>Explanation Quality</h3>
+            <p>Shows which explanation sources are available for the current task.</p>
+          </section>
+        </div>
         <section id="selectedFactXai" class="selected-fact-xai">
           <h3>Selected Fact NN Contribution</h3>
           <p>Select a reasoned fact to see which neural-network prediction and XYZ feature influences contributed to it.</p>
+        </section>
+        <section id="shapPanel" class="selected-fact-xai">
+          <div class="section-head compact-head">
+            <h3>SHAP Comparison</h3>
+            <button id="refreshShapButton" class="pill small-pill" type="button">Run SHAP</button>
+          </div>
+          <p id="shapStatus">SHAP is optional. If the package is not installed, LIME remains the active NN XAI method.</p>
+          <div id="shapResults" class="lime-results"></div>
         </section>
         <div id="limeResults" class="lime-results"></div>
       </section>

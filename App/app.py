@@ -17,6 +17,14 @@ except Exception as exc:
 else:
     LIME_IMPORT_ERROR = ""
 
+try:
+    import shap
+except Exception as exc:
+    shap = None
+    SHAP_IMPORT_ERROR = str(exc)
+else:
+    SHAP_IMPORT_ERROR = ""
+
 
 app = Flask(__name__)
 CORS(app)
@@ -192,6 +200,13 @@ def make_lime_training_data(coordinates, sample_count=240):
     return np.vstack([center, samples]).astype(np.float32)
 
 
+def make_local_samples(coordinates, sample_count=80, seed=7):
+    center = np.asarray(coordinates, dtype=np.float32)
+    scale = np.maximum(np.abs(center) * 0.08, 0.05)
+    rng = np.random.default_rng(seed)
+    return rng.normal(loc=center, scale=scale, size=(sample_count, len(FEATURE_NAMES))).astype(np.float32)
+
+
 def predict_output_column(model, samples, output_index):
     prediction = model.predict(np.asarray(samples, dtype=np.float32), verbose=0)
     if isinstance(prediction, (list, tuple)):
@@ -257,6 +272,52 @@ def explain_model_with_lime(config, coordinates, training_data):
             "precision": result["precision"],
         },
         "lime": explanations,
+    }
+
+
+def explain_model_with_shap(config, coordinates):
+    model_name = config["name"]
+    if model_name not in MODELS:
+        error = MODEL_LOAD_ERRORS.get(model_name, "Model was not loaded.")
+        raise RuntimeError(f"{model_name} is unavailable: {error}")
+
+    model = MODELS[model_name]
+    background = make_local_samples(coordinates, sample_count=36, seed=11)
+    sample = np.asarray([coordinates], dtype=np.float32)
+    result = predict_with_model(config, coordinates)
+    explanations = {}
+
+    for output_index, output_name in enumerate(OUTPUT_LABELS):
+        def predict_fn(samples, index=output_index):
+            return predict_output_column(model, samples, index)
+
+        explainer = shap.KernelExplainer(predict_fn, background)
+        shap_values = explainer.shap_values(sample, nsamples=64)
+        values = np.asarray(shap_values).reshape(-1).astype(float)
+        weights_by_feature = {
+            feature: float(values[index]) if index < len(values) else 0.0
+            for index, feature in enumerate(FEATURE_NAMES)
+        }
+        strongest_feature = max(
+            weights_by_feature,
+            key=lambda feature: abs(weights_by_feature[feature]),
+        )
+        explanations[output_name] = {
+            "prediction": result[output_name],
+            "feature_weights": weights_by_feature,
+            "strongest_feature": strongest_feature,
+            "strongest_weight": weights_by_feature[strongest_feature],
+        }
+
+    return {
+        "model": model_name,
+        "robot": config["robot"],
+        "input_features": coordinates,
+        "outputs": {
+            "repeatability": result["repeatability"],
+            "precision": result["precision"],
+        },
+        "shap": explanations,
     }
 
 
@@ -365,6 +426,68 @@ def explain_lime():
                 "code": 202,
                 "status": True,
                 "message": "LIME explanations generated successfully.",
+                "data": {
+                    "task_coordinates": {
+                        "x": coordinates[0],
+                        "y": coordinates[1],
+                        "z": coordinates[2],
+                    },
+                    "features": FEATURE_NAMES,
+                    "explanations": explanations,
+                },
+            }
+        )
+
+    except Exception as exc:
+        return (
+            jsonify(
+                {
+                    "code": 400,
+                    "status": False,
+                    "message": str(exc),
+                    "data": "",
+                }
+            ),
+            400,
+        )
+
+
+@app.route("/explain/shap/status", methods=["GET"])
+def shap_status():
+    return jsonify(
+        {
+            "available": shap is not None,
+            "error": SHAP_IMPORT_ERROR,
+            "features": FEATURE_NAMES,
+            "loaded_models": sorted(MODELS.keys()),
+        }
+    )
+
+
+@app.route("/explain/shap", methods=["POST"])
+def explain_shap():
+    try:
+        if shap is None:
+            raise RuntimeError(
+                f"SHAP is not installed or could not be imported: {SHAP_IMPORT_ERROR}"
+            )
+
+        request_body = request.get_json(silent=True) or {}
+        data = request_body.get("data")
+        if not isinstance(data, list) or len(data) != 3:
+            raise ValueError("Data must contain exactly 3 XYZ values.")
+
+        coordinates = [float(value) for value in data]
+        explanations = [
+            explain_model_with_shap(config, coordinates)
+            for config in MODEL_CONFIGS
+        ]
+
+        return jsonify(
+            {
+                "code": 202,
+                "status": True,
+                "message": "SHAP explanations generated successfully.",
                 "data": {
                     "task_coordinates": {
                         "x": coordinates[0],
