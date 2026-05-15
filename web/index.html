@@ -157,6 +157,7 @@
         <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Counterfactual</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nlTab">Natural Language</button>
         <button class="explanation-tab" type="button" data-explanation-tab="rulesTab">Rules</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="sparqlTab">SPARQL</button>
       </div>
 
       <section class="explanation-panel" id="counterfactualTab" hidden>
@@ -219,6 +220,20 @@
       <section class="explanation-panel" id="rulesTab" hidden>
         <h2>Datalog Rule Explanation</h2>
         <div id="ruleList" class="rule-list"></div>
+      </section>
+
+      <section class="explanation-panel" id="sparqlTab" hidden>
+        <h2>SPARQL Query Viewer</h2>
+        <div class="query-viewer">
+          <div>
+            <h3>Reasoned facts query</h3>
+            <pre id="factsQueryText"></pre>
+          </div>
+          <div>
+            <h3>Knowledge Graph update query</h3>
+            <pre id="updateQueryText">Run a prediction to generate the update query.</pre>
+          </div>
+        </div>
       </section>
     </section>
 

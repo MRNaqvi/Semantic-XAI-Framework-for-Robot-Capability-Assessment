@@ -936,6 +936,35 @@ body {
   overflow: auto;
 }
 
+.query-viewer {
+  display: grid;
+  gap: 12px;
+}
+
+.query-viewer > div {
+  min-width: 0;
+}
+
+.query-viewer h3 {
+  margin: 0 0 8px;
+  color: var(--teal);
+  font-size: 15px;
+}
+
+.query-viewer pre {
+  max-height: 360px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--text);
+  overflow: auto;
+  white-space: pre;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .rule-card {
   padding: 12px;
   border: 1px solid var(--field-border);

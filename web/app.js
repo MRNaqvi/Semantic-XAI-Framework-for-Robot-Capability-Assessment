@@ -51,6 +51,8 @@ const nlExplanation = document.querySelector("#nlExplanation");
 const ruleList = document.querySelector("#ruleList");
 const beforeFacts = document.querySelector("#beforeFacts");
 const afterFacts = document.querySelector("#afterFacts");
+const factsQueryText = document.querySelector("#factsQueryText");
+const updateQueryText = document.querySelector("#updateQueryText");
 const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
 const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
 const ontologyFile = document.querySelector("#ontologyFile");
@@ -247,6 +249,12 @@ SELECT ?robot ?classification ?marker WHERE {
 }`;
 }
 
+function refreshQueryViewer() {
+  factsQueryText.textContent = makeFactsQuery();
+  updateQueryText.textContent = lastResult?.ontology_update_query ||
+    "Run a prediction to generate the update query.";
+}
+
 function makeFactSyntax(fact) {
   return `${fact.type}[${fact.robot}]`;
 }
@@ -296,6 +304,9 @@ function activateExplanationTab(tabId) {
 
   if (tabId === "graphTab") {
     updateGraphButtons();
+  }
+  if (tabId === "sparqlTab") {
+    refreshQueryViewer();
   }
 }
 
@@ -1160,6 +1171,7 @@ function refreshResultFromCurrentValues() {
   lastResult.ontology_update_query = buildOntologyUpdateQuery(
     lastResult.model_outputs
   );
+  refreshQueryViewer();
 }
 
 function renderSimulationPanel() {
@@ -1339,6 +1351,7 @@ async function executePrediction() {
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
     });
+    refreshQueryViewer();
     appendRuleLog(`NN model prediction completed for XYZ: ${coordinates.join(", ")}.`);
     simulatedMode = false;
     resultText.textContent = formatResults(lastResult.model_outputs);
