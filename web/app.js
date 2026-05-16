@@ -532,6 +532,8 @@ async function runIntegratedGradientsExplanation() {
   }
 
   try {
+    refreshIgButton.disabled = true;
+    refreshIgButton.textContent = "Running IG...";
     igStatus.textContent = "Generating Integrated Gradients explanations...";
     const payload = await postJson(integratedGradientsUrl, { data: lastCoordinates });
     lastIgResult = payload;
@@ -545,6 +547,9 @@ async function runIntegratedGradientsExplanation() {
     igResults.innerHTML = "";
     renderExplanationQuality();
     appendRuleLog(`Integrated Gradients explanation failed: ${error.message}`);
+  } finally {
+    refreshIgButton.disabled = false;
+    refreshIgButton.textContent = "Run IG";
   }
 }
 
