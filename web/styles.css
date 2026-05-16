@@ -979,6 +979,42 @@ body {
   gap: 12px;
 }
 
+.shap-results {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.xai-method-section {
+  border: 1px solid rgba(204, 243, 255, 0.28);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 14px 0;
+}
+
+.lime-method-section {
+  background: rgba(15, 38, 48, 0.74);
+}
+
+.shap-method-section {
+  background: rgba(38, 26, 54, 0.74);
+}
+
+.method-head {
+  margin-bottom: 12px;
+}
+
+.method-head h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+}
+
+.method-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .xai-dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

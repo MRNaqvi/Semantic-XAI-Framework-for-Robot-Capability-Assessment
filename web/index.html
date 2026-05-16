@@ -243,15 +243,21 @@
           <h3>Selected Fact NN Contribution</h3>
           <p>Select a reasoned fact to see which neural-network prediction and XYZ feature influences contributed to it.</p>
         </section>
-        <section id="shapPanel" class="selected-fact-xai">
+        <section class="xai-method-section lime-method-section">
+          <div class="method-head">
+            <h3>LIME Local Explanation</h3>
+            <p>LIME stays here. Running SHAP will not move or mix these LIME cards.</p>
+          </div>
+          <div id="limeResults" class="lime-results"></div>
+        </section>
+        <section id="shapPanel" class="xai-method-section shap-method-section">
           <div class="section-head compact-head">
             <h3>SHAP Comparison</h3>
             <button id="refreshShapButton" class="pill small-pill" type="button">Run SHAP</button>
           </div>
           <p id="shapStatus">SHAP is optional. If the package is not installed, LIME remains the active NN XAI method.</p>
-          <div id="shapResults" class="lime-results"></div>
+          <div id="shapResults" class="shap-results"></div>
         </section>
-        <div id="limeResults" class="lime-results"></div>
       </section>
 
       <section class="explanation-panel" id="rulesTab" hidden>
