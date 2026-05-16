@@ -266,6 +266,14 @@
           <p id="igStatus">Integrated Gradients explains the NN prediction by accumulating gradients from a zero XYZ baseline to the current task point.</p>
           <div id="igResults" class="ig-results"></div>
         </section>
+        <section id="permutationPanel" class="xai-method-section permutation-method-section">
+          <div class="section-head compact-head">
+            <h3>Permutation Importance</h3>
+            <button id="refreshPermutationButton" class="pill small-pill" type="button">Run Permutation</button>
+          </div>
+          <p id="permutationStatus">Permutation Importance perturbs one coordinate at a time and measures how much the NN output changes.</p>
+          <div id="permutationResults" class="permutation-results"></div>
+        </section>
       </section>
 
       <section class="explanation-panel" id="rulesTab" hidden>
@@ -326,6 +334,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=20260516-manual-xai"></script>
+  <script src="app.js?v=20260516-permutation-xai"></script>
 </body>
 </html>

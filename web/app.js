@@ -9,6 +9,7 @@ const uploadModelsUrl = "http://127.0.0.1:5000/models/upload";
 const limeExplainUrl = "http://127.0.0.1:5000/explain/lime";
 const shapExplainUrl = "http://127.0.0.1:5000/explain/shap";
 const integratedGradientsUrl = "http://127.0.0.1:5000/explain/integrated-gradients";
+const permutationExplainUrl = "http://127.0.0.1:5000/explain/permutation";
 
 const robotOrder = ["IRB 1200", "IRB 2400", "Ned 2"];
 const robotDisplayName = {
@@ -67,6 +68,9 @@ const shapResults = document.querySelector("#shapResults");
 const refreshIgButton = document.querySelector("#refreshIgButton");
 const igStatus = document.querySelector("#igStatus");
 const igResults = document.querySelector("#igResults");
+const refreshPermutationButton = document.querySelector("#refreshPermutationButton");
+const permutationStatus = document.querySelector("#permutationStatus");
+const permutationResults = document.querySelector("#permutationResults");
 const factsQueryText = document.querySelector("#factsQueryText");
 const updateQueryText = document.querySelector("#updateQueryText");
 const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
@@ -95,6 +99,7 @@ let lastCoordinates = [];
 let lastLimeResult = null;
 let lastShapResult = null;
 let lastIgResult = null;
+let lastPermutationResult = null;
 let lastFacts = [];
 let baselineFacts = [];
 let simulatedFacts = [];
@@ -370,12 +375,15 @@ function resetNnXaiPanels() {
   lastLimeResult = null;
   lastShapResult = null;
   lastIgResult = null;
+  lastPermutationResult = null;
   limeResults.innerHTML = "";
   shapResults.innerHTML = "";
   igResults.innerHTML = "";
+  permutationResults.innerHTML = "";
   limeStatus.textContent = "LIME is ready. Press Run LIME to run this method for the current XYZ task.";
   shapStatus.textContent = "SHAP is ready. Press Run SHAP to run this method for the current XYZ task.";
   igStatus.textContent = "Integrated Gradients is ready. Press Run IG to run this method for the current XYZ task.";
+  permutationStatus.textContent = "Permutation Importance is ready. Press Run Permutation to perturb X, Y, and Z.";
   renderSelectedFactXai();
   renderXaiStability();
   renderExplanationQuality();
@@ -456,8 +464,8 @@ function renderShapResults(payload) {
       const comparison = document.createElement("p");
       comparison.className = "lime-summary";
       comparison.textContent = limeExplanation
-        ? `LIME strongest feature: ${limeExplanation.strongest_feature}. SHAP strongest feature: ${shapExplanation.strongest_feature}.`
-        : `SHAP strongest feature: ${shapExplanation.strongest_feature}.`;
+        ? `LIME uses a local surrogate around the given XYZ and highlights ${limeExplanation.strongest_feature}. SHAP attributes this NN output and highlights ${shapExplanation.strongest_feature}. Different methods can select different features.`
+        : `SHAP attributes this NN output and highlights ${shapExplanation.strongest_feature}.`;
       section.appendChild(comparison);
       card.appendChild(section);
     });
@@ -540,7 +548,7 @@ function renderAttributionResults(payload, resultKey, container, methodLabel, co
       const comparison = document.createElement("p");
       comparison.className = "lime-summary";
       comparison.textContent = compareWithLime && limeExplanation
-        ? `LIME strongest feature: ${limeExplanation.strongest_feature}. ${methodLabel} strongest feature: ${methodExplanation.strongest_feature}.`
+        ? `LIME uses a local surrogate around the given XYZ and highlights ${limeExplanation.strongest_feature}. ${methodLabel} explains the NN with its own attribution logic and highlights ${methodExplanation.strongest_feature}.`
         : `${methodLabel} strongest feature: ${methodExplanation.strongest_feature}.`;
       section.appendChild(comparison);
       card.appendChild(section);
@@ -575,6 +583,34 @@ async function runIntegratedGradientsExplanation() {
   } finally {
     refreshIgButton.disabled = false;
     refreshIgButton.textContent = "Run IG";
+  }
+}
+
+async function runPermutationExplanation() {
+  if (!lastCoordinates.length) {
+    permutationStatus.textContent = "Run a prediction first to generate Permutation Importance explanations.";
+    return;
+  }
+
+  try {
+    refreshPermutationButton.disabled = true;
+    refreshPermutationButton.textContent = "Running...";
+    permutationStatus.textContent = "Selected method: Permutation Importance. Perturbing X, Y, and Z...";
+    const payload = await postJson(permutationExplainUrl, { data: lastCoordinates });
+    lastPermutationResult = payload;
+    permutationStatus.textContent = "Selected method: Permutation Importance. Explanations generated for the current XYZ task.";
+    renderAttributionResults(payload, "permutation_importance", permutationResults, "Permutation Importance");
+    renderExplanationQuality();
+    appendRuleLog("Permutation Importance NN XAI explanations generated.");
+  } catch (error) {
+    lastPermutationResult = null;
+    permutationStatus.textContent = error.message;
+    permutationResults.innerHTML = "";
+    renderExplanationQuality();
+    appendRuleLog(`Permutation Importance explanation failed: ${error.message}`);
+  } finally {
+    refreshPermutationButton.disabled = false;
+    refreshPermutationButton.textContent = "Run Permutation";
   }
 }
 
@@ -707,6 +743,7 @@ function renderExplanationQuality() {
     ["LIME local explanation", lastLimeResult ? "available" : "run LIME"],
     ["SHAP attribution", lastShapResult ? "available" : "optional or unavailable"],
     ["Integrated Gradients attribution", lastIgResult ? "available" : "run IG"],
+    ["Permutation Importance", lastPermutationResult ? "available" : "run permutation"],
     ["OpenAI NL explanation", nlExplanation.textContent && !nlExplanation.textContent.includes("Add your OpenAI API key") ? "available" : "add API key / explain fact"],
   ];
 
@@ -2148,6 +2185,7 @@ exportReportButton.addEventListener("click", exportReport);
 refreshLimeButton.addEventListener("click", runLimeExplanation);
 refreshShapButton.addEventListener("click", runShapExplanation);
 refreshIgButton.addEventListener("click", runIntegratedGradientsExplanation);
+refreshPermutationButton.addEventListener("click", runPermutationExplanation);
 selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
 wholeGraphButton.addEventListener("click", renderWholeGraph);
 exportSvgButton.addEventListener("click", exportGraphSvg);

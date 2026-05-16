@@ -385,6 +385,69 @@ def explain_model_with_integrated_gradients(config, coordinates, steps=32):
     }
 
 
+def explain_model_with_permutation_importance(config, coordinates):
+    model_name = config["name"]
+    if model_name not in MODELS:
+        error = MODEL_LOAD_ERRORS.get(model_name, "Model was not loaded.")
+        raise RuntimeError(f"{model_name} is unavailable: {error}")
+
+    result = predict_with_model(config, coordinates)
+    base = np.asarray(coordinates, dtype=np.float32)
+    scale = np.maximum(np.abs(base) * 0.12, 0.05)
+    explanations = {}
+
+    for output_index, output_name in enumerate(OUTPUT_LABELS):
+        baseline_prediction = result[output_name]
+        weights_by_feature = {}
+        perturbed_predictions = {}
+
+        for feature_index, feature in enumerate(FEATURE_NAMES):
+            high = base.copy()
+            low = base.copy()
+            high[feature_index] = high[feature_index] + scale[feature_index]
+            low[feature_index] = low[feature_index] - scale[feature_index]
+            high_prediction = float(
+                predict_output_column(MODELS[model_name], np.asarray([high], dtype=np.float32), output_index)[0]
+            )
+            low_prediction = float(
+                predict_output_column(MODELS[model_name], np.asarray([low], dtype=np.float32), output_index)[0]
+            )
+            importance = max(
+                abs(high_prediction - baseline_prediction),
+                abs(low_prediction - baseline_prediction),
+            )
+            direction = high_prediction - low_prediction
+            weights_by_feature[feature] = float(importance if direction >= 0 else -importance)
+            perturbed_predictions[feature] = {
+                "high": high_prediction,
+                "low": low_prediction,
+                "delta": float(scale[feature_index]),
+            }
+
+        strongest_feature = max(
+            weights_by_feature,
+            key=lambda feature: abs(weights_by_feature[feature]),
+        )
+        explanations[output_name] = {
+            "prediction": baseline_prediction,
+            "feature_weights": weights_by_feature,
+            "strongest_feature": strongest_feature,
+            "strongest_weight": weights_by_feature[strongest_feature],
+            "perturbed_predictions": perturbed_predictions,
+        }
+
+    return {
+        "model": model_name,
+        "robot": config["robot"],
+        "input_features": coordinates,
+        "outputs": {
+            "repeatability": result["repeatability"],
+            "precision": result["precision"],
+        },
+        "permutation_importance": explanations,
+    }
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
@@ -597,6 +660,51 @@ def explain_integrated_gradients():
                 "code": 202,
                 "status": True,
                 "message": "Integrated Gradients explanations generated successfully.",
+                "data": {
+                    "task_coordinates": {
+                        "x": coordinates[0],
+                        "y": coordinates[1],
+                        "z": coordinates[2],
+                    },
+                    "features": FEATURE_NAMES,
+                    "explanations": explanations,
+                },
+            }
+        )
+
+    except Exception as exc:
+        return (
+            jsonify(
+                {
+                    "code": 400,
+                    "status": False,
+                    "message": str(exc),
+                    "data": "",
+                }
+            ),
+            400,
+        )
+
+
+@app.route("/explain/permutation", methods=["POST"])
+def explain_permutation():
+    try:
+        request_body = request.get_json(silent=True) or {}
+        data = request_body.get("data")
+        if not isinstance(data, list) or len(data) != 3:
+            raise ValueError("Data must contain exactly 3 XYZ values.")
+
+        coordinates = [float(value) for value in data]
+        explanations = [
+            explain_model_with_permutation_importance(config, coordinates)
+            for config in MODEL_CONFIGS
+        ]
+
+        return jsonify(
+            {
+                "code": 202,
+                "status": True,
+                "message": "Permutation Importance explanations generated successfully.",
                 "data": {
                     "task_coordinates": {
                         "x": coordinates[0],

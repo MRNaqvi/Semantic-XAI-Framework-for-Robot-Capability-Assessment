@@ -991,6 +991,12 @@ body {
   margin-top: 12px;
 }
 
+.permutation-results {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .xai-method-section {
   border: 1px solid rgba(204, 243, 255, 0.28);
   border-radius: 8px;
@@ -1008,6 +1014,10 @@ body {
 
 .ig-method-section {
   background: rgba(42, 45, 24, 0.74);
+}
+
+.permutation-method-section {
+  background: rgba(22, 43, 44, 0.74);
 }
 
 .method-head {
