@@ -985,6 +985,12 @@ body {
   margin-top: 12px;
 }
 
+.ig-results {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .xai-method-section {
   border: 1px solid rgba(204, 243, 255, 0.28);
   border-radius: 8px;
@@ -998,6 +1004,10 @@ body {
 
 .shap-method-section {
   background: rgba(38, 26, 54, 0.74);
+}
+
+.ig-method-section {
+  background: rgba(42, 45, 24, 0.74);
 }
 
 .method-head {

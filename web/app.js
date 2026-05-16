@@ -8,6 +8,7 @@ const modelStatusUrl = "http://127.0.0.1:5000/models/status";
 const uploadModelsUrl = "http://127.0.0.1:5000/models/upload";
 const limeExplainUrl = "http://127.0.0.1:5000/explain/lime";
 const shapExplainUrl = "http://127.0.0.1:5000/explain/shap";
+const integratedGradientsUrl = "http://127.0.0.1:5000/explain/integrated-gradients";
 
 const robotOrder = ["IRB 1200", "IRB 2400", "Ned 2"];
 const robotDisplayName = {
@@ -63,6 +64,9 @@ const counterfactualSuggestion = document.querySelector("#counterfactualSuggesti
 const refreshShapButton = document.querySelector("#refreshShapButton");
 const shapStatus = document.querySelector("#shapStatus");
 const shapResults = document.querySelector("#shapResults");
+const refreshIgButton = document.querySelector("#refreshIgButton");
+const igStatus = document.querySelector("#igStatus");
+const igResults = document.querySelector("#igResults");
 const factsQueryText = document.querySelector("#factsQueryText");
 const updateQueryText = document.querySelector("#updateQueryText");
 const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
@@ -90,6 +94,7 @@ let lastResult = null;
 let lastCoordinates = [];
 let lastLimeResult = null;
 let lastShapResult = null;
+let lastIgResult = null;
 let lastFacts = [];
 let baselineFacts = [];
 let simulatedFacts = [];
@@ -464,6 +469,85 @@ async function runShapExplanation() {
   }
 }
 
+function renderAttributionResults(payload, resultKey, container, methodLabel, compareWithLime = true) {
+  container.innerHTML = "";
+  const explanations = payload?.data?.explanations || [];
+  if (!explanations.length) {
+    container.textContent = `No ${methodLabel} explanations available.`;
+    return;
+  }
+
+  explanations.forEach((robotExplanation) => {
+    const card = document.createElement("article");
+    card.className = "lime-card";
+    const title = document.createElement("h3");
+    title.textContent = robotDisplayName[robotExplanation.model] || robotExplanation.model;
+    card.appendChild(title);
+
+    ["repeatability", "precision"].forEach((capability) => {
+      const methodExplanation = robotExplanation[resultKey]?.[capability];
+      const limeExplanation = getLimeForModel({ model: robotExplanation.model, robot: robotExplanation.robot })?.lime?.[capability];
+      if (!methodExplanation) {
+        return;
+      }
+
+      const section = document.createElement("section");
+      section.className = "lime-capability";
+      const heading = document.createElement("h4");
+      heading.textContent = `${capability === "repeatability" ? "Repeatability" : "Precision"} ${methodLabel} attribution`;
+      section.appendChild(heading);
+
+      const rows = makeInfluenceRows(methodExplanation);
+      const maxAbs = Math.max(...rows.map((item) => Math.abs(item.weight)), 0.000001);
+      rows.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "lime-row";
+        row.innerHTML = `
+          <span>${item.feature}</span>
+          <div class="lime-bar-track">
+            <i class="${item.weight >= 0 ? "positive" : "negative"}" style="width:${Math.min(100, Math.abs(item.weight) / maxAbs * 100)}%"></i>
+          </div>
+          <strong>${formatWeight(item.weight)}</strong>
+        `;
+        section.appendChild(row);
+      });
+
+      const comparison = document.createElement("p");
+      comparison.className = "lime-summary";
+      comparison.textContent = compareWithLime && limeExplanation
+        ? `LIME strongest feature: ${limeExplanation.strongest_feature}. ${methodLabel} strongest feature: ${methodExplanation.strongest_feature}.`
+        : `${methodLabel} strongest feature: ${methodExplanation.strongest_feature}.`;
+      section.appendChild(comparison);
+      card.appendChild(section);
+    });
+
+    container.appendChild(card);
+  });
+}
+
+async function runIntegratedGradientsExplanation() {
+  if (!lastCoordinates.length) {
+    igStatus.textContent = "Run a prediction first to generate Integrated Gradients explanations.";
+    return;
+  }
+
+  try {
+    igStatus.textContent = "Generating Integrated Gradients explanations...";
+    const payload = await postJson(integratedGradientsUrl, { data: lastCoordinates });
+    lastIgResult = payload;
+    igStatus.textContent = "Integrated Gradients explanations generated for the current XYZ task.";
+    renderAttributionResults(payload, "integrated_gradients", igResults, "Integrated Gradients");
+    renderExplanationQuality();
+    appendRuleLog("Integrated Gradients NN XAI explanations generated.");
+  } catch (error) {
+    lastIgResult = null;
+    igStatus.textContent = error.message;
+    igResults.innerHTML = "";
+    renderExplanationQuality();
+    appendRuleLog(`Integrated Gradients explanation failed: ${error.message}`);
+  }
+}
+
 function findModelResultForFact(fact) {
   if (!fact || !lastResult?.model_outputs?.length) {
     return null;
@@ -592,6 +676,7 @@ function renderExplanationQuality() {
     ["NN prediction", lastResult ? "available" : "run prediction"],
     ["LIME local explanation", lastLimeResult ? "available" : "run LIME"],
     ["SHAP attribution", lastShapResult ? "available" : "optional or unavailable"],
+    ["Integrated Gradients attribution", lastIgResult ? "available" : "run IG"],
     ["OpenAI NL explanation", nlExplanation.textContent && !nlExplanation.textContent.includes("Add your OpenAI API key") ? "available" : "add API key / explain fact"],
   ];
 
@@ -1948,8 +2033,11 @@ async function executePrediction() {
     lastCoordinates = coordinates;
     lastLimeResult = null;
     lastShapResult = null;
+    lastIgResult = null;
     shapResults.innerHTML = "";
     shapStatus.textContent = "SHAP is optional. Run SHAP after prediction if you want LIME vs SHAP comparison.";
+    igResults.innerHTML = "";
+    igStatus.textContent = "Integrated Gradients explains the NN prediction by accumulating gradients from a zero XYZ baseline to the current task point.";
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
     });
@@ -2038,6 +2126,7 @@ refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
 refreshLimeButton.addEventListener("click", runLimeExplanation);
 refreshShapButton.addEventListener("click", runShapExplanation);
+refreshIgButton.addEventListener("click", runIntegratedGradientsExplanation);
 selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
 wholeGraphButton.addEventListener("click", renderWholeGraph);
 exportSvgButton.addEventListener("click", exportGraphSvg);

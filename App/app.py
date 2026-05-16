@@ -328,6 +328,63 @@ def explain_model_with_shap(config, coordinates):
     }
 
 
+def explain_model_with_integrated_gradients(config, coordinates, steps=32):
+    model_name = config["name"]
+    if model_name not in MODELS:
+        error = MODEL_LOAD_ERRORS.get(model_name, "Model was not loaded.")
+        raise RuntimeError(f"{model_name} is unavailable: {error}")
+
+    model = MODELS[model_name]
+    result = predict_with_model(config, coordinates)
+    input_tensor = tf.convert_to_tensor([coordinates], dtype=tf.float32)
+    baseline = tf.zeros_like(input_tensor)
+    alphas = tf.linspace(0.0, 1.0, steps + 1)
+    explanations = {}
+
+    for output_index, output_name in enumerate(OUTPUT_LABELS):
+        gradients = []
+        for alpha in alphas:
+            interpolated = baseline + alpha * (input_tensor - baseline)
+            with tf.GradientTape() as tape:
+                tape.watch(interpolated)
+                prediction = model(interpolated, training=False)
+                output = prediction[output_index] if isinstance(prediction, (list, tuple)) else prediction[:, output_index]
+            gradient = tape.gradient(output, interpolated)
+            gradients.append(gradient)
+
+        stacked = tf.stack(gradients, axis=0)
+        average_gradients = tf.reduce_mean((stacked[:-1] + stacked[1:]) / 2.0, axis=0)
+        attributions = (input_tensor - baseline) * average_gradients
+        values = attributions.numpy().reshape(-1).astype(float)
+        weights_by_feature = {
+            feature: float(values[index]) if index < len(values) else 0.0
+            for index, feature in enumerate(FEATURE_NAMES)
+        }
+        strongest_feature = max(
+            weights_by_feature,
+            key=lambda feature: abs(weights_by_feature[feature]),
+        )
+        explanations[output_name] = {
+            "prediction": result[output_name],
+            "feature_weights": weights_by_feature,
+            "strongest_feature": strongest_feature,
+            "strongest_weight": weights_by_feature[strongest_feature],
+            "baseline": [0.0 for _ in FEATURE_NAMES],
+            "steps": steps,
+        }
+
+    return {
+        "model": model_name,
+        "robot": config["robot"],
+        "input_features": coordinates,
+        "outputs": {
+            "repeatability": result["repeatability"],
+            "precision": result["precision"],
+        },
+        "integrated_gradients": explanations,
+    }
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
@@ -495,6 +552,51 @@ def explain_shap():
                 "code": 202,
                 "status": True,
                 "message": "SHAP explanations generated successfully.",
+                "data": {
+                    "task_coordinates": {
+                        "x": coordinates[0],
+                        "y": coordinates[1],
+                        "z": coordinates[2],
+                    },
+                    "features": FEATURE_NAMES,
+                    "explanations": explanations,
+                },
+            }
+        )
+
+    except Exception as exc:
+        return (
+            jsonify(
+                {
+                    "code": 400,
+                    "status": False,
+                    "message": str(exc),
+                    "data": "",
+                }
+            ),
+            400,
+        )
+
+
+@app.route("/explain/integrated-gradients", methods=["POST"])
+def explain_integrated_gradients():
+    try:
+        request_body = request.get_json(silent=True) or {}
+        data = request_body.get("data")
+        if not isinstance(data, list) or len(data) != 3:
+            raise ValueError("Data must contain exactly 3 XYZ values.")
+
+        coordinates = [float(value) for value in data]
+        explanations = [
+            explain_model_with_integrated_gradients(config, coordinates)
+            for config in MODEL_CONFIGS
+        ]
+
+        return jsonify(
+            {
+                "code": 202,
+                "status": True,
+                "message": "Integrated Gradients explanations generated successfully.",
                 "data": {
                     "task_coordinates": {
                         "x": coordinates[0],

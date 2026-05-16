@@ -258,6 +258,14 @@
           <p id="shapStatus">SHAP is optional. If the package is not installed, LIME remains the active NN XAI method.</p>
           <div id="shapResults" class="shap-results"></div>
         </section>
+        <section id="igPanel" class="xai-method-section ig-method-section">
+          <div class="section-head compact-head">
+            <h3>Integrated Gradients</h3>
+            <button id="refreshIgButton" class="pill small-pill" type="button">Run IG</button>
+          </div>
+          <p id="igStatus">Integrated Gradients explains the NN prediction by accumulating gradients from a zero XYZ baseline to the current task point.</p>
+          <div id="igResults" class="ig-results"></div>
+        </section>
       </section>
 
       <section class="explanation-panel" id="rulesTab" hidden>
