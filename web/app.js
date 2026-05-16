@@ -366,6 +366,21 @@ function renderLimeResults(payload) {
   renderExplanationQuality();
 }
 
+function resetNnXaiPanels() {
+  lastLimeResult = null;
+  lastShapResult = null;
+  lastIgResult = null;
+  limeResults.innerHTML = "";
+  shapResults.innerHTML = "";
+  igResults.innerHTML = "";
+  limeStatus.textContent = "LIME is ready. Press Run LIME to run this method for the current XYZ task.";
+  shapStatus.textContent = "SHAP is ready. Press Run SHAP to run this method for the current XYZ task.";
+  igStatus.textContent = "Integrated Gradients is ready. Press Run IG to run this method for the current XYZ task.";
+  renderSelectedFactXai();
+  renderXaiStability();
+  renderExplanationQuality();
+}
+
 async function runLimeExplanation() {
   if (!lastCoordinates.length) {
     limeStatus.textContent = "Run a prediction first to generate LIME explanations.";
@@ -373,10 +388,12 @@ async function runLimeExplanation() {
   }
 
   try {
+    refreshLimeButton.disabled = true;
+    refreshLimeButton.textContent = "Running LIME...";
     limeStatus.textContent = "Generating LIME explanations...";
     const payload = await postJson(limeExplainUrl, { data: lastCoordinates });
     lastLimeResult = payload;
-    limeStatus.textContent = "LIME explanations generated for the current XYZ task.";
+    limeStatus.textContent = "Selected method: LIME. LIME explanations generated for the current XYZ task.";
     renderLimeResults(payload);
     appendRuleLog("LIME NN XAI explanations generated.");
   } catch (error) {
@@ -387,6 +404,9 @@ async function runLimeExplanation() {
     renderXaiStability();
     renderExplanationQuality();
     appendRuleLog(`LIME explanation failed: ${error.message}`);
+  } finally {
+    refreshLimeButton.disabled = false;
+    refreshLimeButton.textContent = "Run LIME";
   }
 }
 
@@ -453,10 +473,12 @@ async function runShapExplanation() {
   }
 
   try {
-    shapStatus.textContent = "Generating SHAP explanations...";
+    refreshShapButton.disabled = true;
+    refreshShapButton.textContent = "Running SHAP...";
+    shapStatus.textContent = "Selected method: SHAP. Generating SHAP explanations...";
     const payload = await postJson(shapExplainUrl, { data: lastCoordinates });
     lastShapResult = payload;
-    shapStatus.textContent = "SHAP explanations generated for the current XYZ task.";
+    shapStatus.textContent = "Selected method: SHAP. SHAP explanations generated for the current XYZ task.";
     renderShapResults(payload);
     renderExplanationQuality();
     appendRuleLog("SHAP NN XAI explanations generated.");
@@ -466,6 +488,9 @@ async function runShapExplanation() {
     shapResults.innerHTML = "";
     renderExplanationQuality();
     appendRuleLog(`SHAP explanation unavailable: ${error.message}`);
+  } finally {
+    refreshShapButton.disabled = false;
+    refreshShapButton.textContent = "Run SHAP";
   }
 }
 
@@ -534,10 +559,10 @@ async function runIntegratedGradientsExplanation() {
   try {
     refreshIgButton.disabled = true;
     refreshIgButton.textContent = "Running IG...";
-    igStatus.textContent = "Generating Integrated Gradients explanations...";
+    igStatus.textContent = "Selected method: Integrated Gradients. Generating explanations...";
     const payload = await postJson(integratedGradientsUrl, { data: lastCoordinates });
     lastIgResult = payload;
-    igStatus.textContent = "Integrated Gradients explanations generated for the current XYZ task.";
+    igStatus.textContent = "Selected method: Integrated Gradients. Explanations generated for the current XYZ task.";
     renderAttributionResults(payload, "integrated_gradients", igResults, "Integrated Gradients");
     renderExplanationQuality();
     appendRuleLog("Integrated Gradients NN XAI explanations generated.");
@@ -849,9 +874,6 @@ function activateExplanationTab(tabId) {
   }
   if (tabId === "sparqlTab") {
     refreshQueryViewer();
-  }
-  if (tabId === "nnXaiTab" && lastCoordinates.length && !lastLimeResult) {
-    runLimeExplanation();
   }
   if (tabId === "nnXaiTab") {
     renderXaiStability();
@@ -2036,13 +2058,8 @@ async function executePrediction() {
 
     lastResult = payload.data[0];
     lastCoordinates = coordinates;
-    lastLimeResult = null;
-    lastShapResult = null;
-    lastIgResult = null;
-    shapResults.innerHTML = "";
-    shapStatus.textContent = "SHAP is optional. Run SHAP after prediction if you want LIME vs SHAP comparison.";
-    igResults.innerHTML = "";
-    igStatus.textContent = "Integrated Gradients explains the NN prediction by accumulating gradients from a zero XYZ baseline to the current task point.";
+    selectedFact = null;
+    resetNnXaiPanels();
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
     });
@@ -2052,7 +2069,6 @@ async function executePrediction() {
     simulatedMode = false;
     resultText.textContent = formatResults(lastResult.model_outputs);
     simulationPanel.hidden = true;
-    runLimeExplanation();
     taskPanel.classList.add("dimmed");
     resultDialog.showModal();
   } catch (error) {
