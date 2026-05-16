@@ -6,6 +6,7 @@ This project runs a robot operational capability workflow:
 - The browser UI accepts Cartesian coordinates `X, Y, Z` for a new task.
 - Predicted or simulated capability values are written to the RDFox knowledge graph as `RCO:has_Measurement_Value`.
 - RDFox 7.5b stores the ontology, Datalog rules, and facts.
+- LIME and SHAP provide local NN XAI feature influence for `X`, `Y`, and `Z`.
 - Natural language explanations are optional and require the user's own OpenAI API key.
 
 ## Version Note
@@ -19,7 +20,7 @@ This S-XAI demo version includes Natural Language explanations. To enable them, 
 - .NET SDK 8 or newer
 - RDFox 7.5b license file
 - Optional: OpenAI API key for natural language explanations
-- Optional: `lime` Python package for NN XAI explanations
+- Python packages from `App\requirements.txt`, including TensorFlow, LIME, and SHAP
 
 RDFox 7.5b runtime files are included under:
 
@@ -61,12 +62,58 @@ $env:RDFOX_LICENSE_FILE = "C:\Path\To\RDFox.lic"
 
 `config.local.ps1` is ignored by Git.
 
+## Fresh Local Setup
+
+Run these commands once on a new Windows machine from the project folder.
+
+Install Python dependencies:
+
+```powershell
+python -m pip install -r ".\App\requirements.txt"
+```
+
+Check that Flask, TensorFlow, LIME, and SHAP are installed:
+
+```powershell
+python ".\App\check_dependencies.py"
+```
+
+If the dependency check prints nothing, the Python environment is ready. If it prints package names, install again with:
+
+```powershell
+python -m pip install -r ".\App\requirements.txt"
+```
+
+Check the .NET API can build:
+
+```powershell
+dotnet build ".\RdfoxWebApi\RdfoxWebApi\RdfoxWebApi.csproj"
+```
+
+Place the RDFox license at:
+
+```text
+license\RDFox.lic
+```
+
+or set it in `config.local.ps1`:
+
+```powershell
+$env:RDFOX_LICENSE_FILE = "C:\Path\To\RDFox.lic"
+```
+
+For Natural Language explanations, add your OpenAI key to `config.local.ps1`:
+
+```powershell
+$env:OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
+```
+
 ## One Command Run
 
 If Python dependencies are missing on a fresh machine, install the Flask model API requirements first:
 
 ```powershell
-pip install -r ".\App\requirements.txt"
+python -m pip install -r ".\App\requirements.txt"
 ```
 
 From the project folder:
@@ -82,6 +129,18 @@ http://127.0.0.1:8001
 ```
 
 The page auto-loads the default `S-XAI` datastore, ontology, Datalog rules, and uses the bundled Keras models.
+
+After the app opens, SHAP is available from:
+
+```text
+Explanations -> NN XAI -> Run SHAP
+```
+
+If SHAP fails on a new machine, rerun:
+
+```powershell
+python -m pip install -r ".\App\requirements.txt"
+```
 
 ## Manual Run
 
