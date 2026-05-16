@@ -1,6 +1,13 @@
 from pathlib import Path
 import io
+import os
+import tempfile
 import zipfile
+
+os.environ.setdefault(
+    "MPLCONFIGDIR",
+    str(Path(tempfile.gettempdir()) / "s-xai-matplotlib"),
+)
 
 import h5py
 import numpy as np

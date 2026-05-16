@@ -1,6 +1,6 @@
 import importlib.util
 
-REQUIRED_PACKAGES = ["flask", "tensorflow", "lime"]
+REQUIRED_PACKAGES = ["flask", "tensorflow", "lime", "shap"]
 
 missing = [
     package for package in REQUIRED_PACKAGES

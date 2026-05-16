@@ -3,4 +3,5 @@ flask-cors
 h5py
 lime
 numpy
+shap
 tensorflow
