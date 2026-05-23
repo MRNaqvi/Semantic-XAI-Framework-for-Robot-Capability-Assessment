@@ -246,7 +246,7 @@
         <section class="xai-method-section lime-method-section">
           <div class="method-head">
             <h3>LIME Local Explanation</h3>
-            <p>LIME stays here. Running SHAP will not move or mix these LIME cards.</p>
+            <p>LIME builds a local surrogate around the current XYZ task point and estimates how X, Y, and Z influence the nearby NN prediction.</p>
           </div>
           <div id="limeResults" class="lime-results"></div>
         </section>
@@ -255,7 +255,7 @@
             <h3>SHAP Comparison</h3>
             <button id="refreshShapButton" class="pill small-pill" type="button">Run SHAP</button>
           </div>
-          <p id="shapStatus">SHAP is optional. If the package is not installed, LIME remains the active NN XAI method.</p>
+          <p id="shapStatus">SHAP attributes the current NN prediction across X, Y, and Z for the selected Cartesian task point.</p>
           <div id="shapResults" class="shap-results"></div>
         </section>
         <section id="igPanel" class="xai-method-section ig-method-section">
@@ -334,6 +334,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=20260516-permutation-xai"></script>
+  <script src="app.js?v=20260523-method-explanations"></script>
 </body>
 </html>

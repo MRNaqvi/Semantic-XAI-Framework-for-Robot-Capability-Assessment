@@ -435,7 +435,6 @@ function renderShapResults(payload) {
 
     ["repeatability", "precision"].forEach((capability) => {
       const shapExplanation = robotExplanation.shap?.[capability];
-      const limeExplanation = getLimeForModel({ model: robotExplanation.model, robot: robotExplanation.robot })?.lime?.[capability];
       if (!shapExplanation) {
         return;
       }
@@ -463,9 +462,7 @@ function renderShapResults(payload) {
 
       const comparison = document.createElement("p");
       comparison.className = "lime-summary";
-      comparison.textContent = limeExplanation
-        ? `LIME uses a local surrogate around the given XYZ and highlights ${limeExplanation.strongest_feature}. SHAP attributes this NN output and highlights ${shapExplanation.strongest_feature}. Different methods can select different features.`
-        : `SHAP attributes this NN output and highlights ${shapExplanation.strongest_feature}.`;
+      comparison.textContent = makeMethodInterpretation("SHAP", robotExplanation.model, capability, shapExplanation);
       section.appendChild(comparison);
       card.appendChild(section);
     });
@@ -502,7 +499,27 @@ async function runShapExplanation() {
   }
 }
 
-function renderAttributionResults(payload, resultKey, container, methodLabel, compareWithLime = true) {
+function makeMethodInterpretation(methodLabel, robot, capability, explanation) {
+  const robotName = robotDisplayName[robot] || robot;
+  const strongest = explanation?.strongest_feature || "X";
+  const capabilityLabel = capabilityName(capability);
+
+  if (methodLabel === "SHAP") {
+    return `SHAP attributes the current ${robotName} ${capabilityLabel} prediction across X, Y, and Z. For this XYZ task, ${strongest} has the largest SHAP contribution to the NN output.`;
+  }
+
+  if (methodLabel === "Integrated Gradients") {
+    return `Integrated Gradients follows the NN gradients from a zero XYZ baseline to the current task point. For this ${robotName} ${capabilityLabel} prediction, ${strongest} receives the largest accumulated attribution.`;
+  }
+
+  if (methodLabel === "Permutation Importance") {
+    return `Permutation Importance perturbs one coordinate at a time around the current XYZ task and measures the output change. For this ${robotName} ${capabilityLabel} prediction, changing ${strongest} produces the largest local response.`;
+  }
+
+  return `${methodLabel} highlights ${strongest} as the strongest feature for this ${robotName} ${capabilityLabel} prediction.`;
+}
+
+function renderAttributionResults(payload, resultKey, container, methodLabel) {
   container.innerHTML = "";
   const explanations = payload?.data?.explanations || [];
   if (!explanations.length) {
@@ -519,7 +536,6 @@ function renderAttributionResults(payload, resultKey, container, methodLabel, co
 
     ["repeatability", "precision"].forEach((capability) => {
       const methodExplanation = robotExplanation[resultKey]?.[capability];
-      const limeExplanation = getLimeForModel({ model: robotExplanation.model, robot: robotExplanation.robot })?.lime?.[capability];
       if (!methodExplanation) {
         return;
       }
@@ -547,9 +563,12 @@ function renderAttributionResults(payload, resultKey, container, methodLabel, co
 
       const comparison = document.createElement("p");
       comparison.className = "lime-summary";
-      comparison.textContent = compareWithLime && limeExplanation
-        ? `LIME uses a local surrogate around the given XYZ and highlights ${limeExplanation.strongest_feature}. ${methodLabel} explains the NN with its own attribution logic and highlights ${methodExplanation.strongest_feature}.`
-        : `${methodLabel} strongest feature: ${methodExplanation.strongest_feature}.`;
+      comparison.textContent = makeMethodInterpretation(
+        methodLabel,
+        robotExplanation.model,
+        capability,
+        methodExplanation
+      );
       section.appendChild(comparison);
       card.appendChild(section);
     });
