@@ -12,6 +12,8 @@ const shapExplainUrl = "http://127.0.0.1:5000/explain/shap";
 const integratedGradientsUrl = "http://127.0.0.1:5000/explain/integrated-gradients";
 const permutationExplainUrl = "http://127.0.0.1:5000/explain/permutation";
 const openLlmReasoningUrl = "http://127.0.0.1:5000/llm/reasoning";
+const defaultRequestTimeoutMs = 30000;
+const openLlmRequestTimeoutMs = 150000;
 
 const robotOrder = ["IRB 1200", "IRB 2400", "Ned 2"];
 const robotDisplayName = {
@@ -294,29 +296,43 @@ function makeFactSyntax(fact) {
   return `${fact.type}[${fact.robot}]`;
 }
 
-async function postJson(url, body) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const responseText = await response.text();
-  let payload = {};
-  if (responseText) {
-    try {
-      payload = JSON.parse(responseText);
-    } catch {
-      payload = {};
+async function postJson(url, body, timeoutMs = defaultRequestTimeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const responseText = await response.text();
+    let payload = {};
+    if (responseText) {
+      try {
+        payload = JSON.parse(responseText);
+      } catch {
+        payload = {};
+      }
     }
+    if (!response.ok || payload.status === false) {
+      const fallbackMessage = responseText
+        ? responseText.slice(0, 220)
+        : `Request failed at ${url}.`;
+      const message = payload.message || payload.error?.message || fallbackMessage;
+      throw new Error(`${message} [${response.status} ${response.statusText}]`);
+    }
+    return payload;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds at ${url}.`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-  if (!response.ok || payload.status === false) {
-    const fallbackMessage = responseText
-      ? responseText.slice(0, 220)
-      : `Request failed at ${url}.`;
-    const message = payload.message || payload.error?.message || fallbackMessage;
-    throw new Error(`${message} [${response.status} ${response.statusText}]`);
-  }
-  return payload;
 }
 
 function renderRules() {
@@ -1860,10 +1876,11 @@ async function generateLlmReasoning() {
       store_name: datastoreInput.value.trim() || "S-XAI",
       fact_query: makeFactSyntax(selectedFact),
       explanation_type: "shortest",
-    });
+    }, defaultRequestTimeoutMs);
 
     const context = makeSelectedFactContext();
     const model = openLlmModel?.value?.trim() || "llama3.2:3b";
+    llmReasoningStatus.textContent = `RDFox JSON received. Asking local ${model} model through Ollama...`;
     const openPayload = await postJson(openLlmReasoningUrl, {
       model,
       selected_fact: context.factText,
@@ -1872,7 +1889,7 @@ async function generateLlmReasoning() {
       before_facts: factsToText(baselineFacts),
       after_facts: factsToText(simulatedFacts),
       rdfox_json: rawPayload?.data?.originalResponse || null,
-    });
+    }, openLlmRequestTimeoutMs);
 
     const payload = {
       code: 202,
