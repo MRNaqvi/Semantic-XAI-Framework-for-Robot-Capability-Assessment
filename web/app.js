@@ -300,9 +300,21 @@ async function postJson(url, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const payload = await response.json().catch(() => ({}));
+  const responseText = await response.text();
+  let payload = {};
+  if (responseText) {
+    try {
+      payload = JSON.parse(responseText);
+    } catch {
+      payload = {};
+    }
+  }
   if (!response.ok || payload.status === false) {
-    throw new Error(payload.message || "Request failed.");
+    const fallbackMessage = responseText
+      ? responseText.slice(0, 220)
+      : `Request failed at ${url}.`;
+    const message = payload.message || payload.error?.message || fallbackMessage;
+    throw new Error(`${message} [${response.status} ${response.statusText}]`);
   }
   return payload;
 }
@@ -1880,7 +1892,11 @@ async function generateLlmReasoning() {
     llmReasoningStatus.textContent = `Open local LLM explanation generated with ${payload.data.provider} model ${payload.data.model}.`;
     appendRuleLog(`Open local LLM reasoning-change explanation generated with ${payload.data.model}.`);
   } catch (error) {
-    llmReasoningStatus.textContent = error.message;
+    if (error.message.includes("404") && error.message.includes("Not Found")) {
+      llmReasoningStatus.textContent = "The running .NET API does not expose FactExplainRaw yet. Restart the project so the new backend build is loaded.";
+    } else {
+      llmReasoningStatus.textContent = error.message;
+    }
     appendRuleLog(`Open local LLM reasoning explanation failed: ${error.message}`);
   } finally {
     generateLlmReasoningButton.disabled = false;
