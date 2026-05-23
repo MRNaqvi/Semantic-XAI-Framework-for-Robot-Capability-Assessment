@@ -157,6 +157,7 @@
         <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Counterfactual</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nnXaiTab">NN XAI</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nlTab">Natural Language</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="llmReasoningTab">LLM Reasoning</button>
         <button class="explanation-tab" type="button" data-explanation-tab="rulesTab">Rules</button>
         <button class="explanation-tab" type="button" data-explanation-tab="sparqlTab">SPARQL</button>
       </div>
@@ -220,6 +221,16 @@
       <section class="explanation-panel" id="nlTab" hidden>
         <h2>Natural Language Explanation</h2>
         <pre id="nlExplanation">Select a fact and click Explain. Add your OpenAI API key to get natural language explanations.</pre>
+      </section>
+
+      <section class="explanation-panel" id="llmReasoningTab" hidden>
+        <div class="section-head compact-head">
+          <h2>LLM Reasoning Change Explanation</h2>
+          <button id="generateLlmReasoningButton" class="pill small-pill" type="button">Generate LLM</button>
+        </div>
+        <p class="xai-note">Uses the selected reasoned fact, RDFox explanation JSON, KG measurement values, and before/after facts to explain how the reasoning result changes.</p>
+        <div id="llmReasoningStatus" class="status-text">Select a reasoned fact, then generate the LLM explanation.</div>
+        <div id="llmReasoningOutput" class="llm-reasoning-output"></div>
       </section>
 
       <section class="explanation-panel" id="nnXaiTab" hidden>

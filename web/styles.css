@@ -936,6 +936,52 @@ body {
   overflow: auto;
 }
 
+.llm-reasoning-output {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.llm-reasoning-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.llm-card,
+.llm-json {
+  padding: 14px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.llm-card.wide {
+  background: rgba(18, 34, 49, 0.72);
+}
+
+.llm-card h3 {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.llm-card pre,
+.llm-json pre {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--text);
+  line-height: 1.42;
+  font-size: 13px;
+}
+
+.llm-json summary {
+  color: var(--accent);
+  font-weight: 800;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
 .query-viewer {
   display: grid;
   gap: 12px;

@@ -168,7 +168,17 @@ namespace RdfoxWebApi.Controllers
                 var parsedResponse = JsonDocument.Parse(explanationJson);
 
 
-                string initialPrompt = $"Given the following JSON explanation, provide a detailed and understandable explanation for the fact derivation:\n\n{explanationJson}";
+                string initialPrompt = $@"You are explaining an S-XAI robot suitability result for manufacturing.
+
+Use only the RDFox explanation JSON below. Explain:
+1. Which fact was selected.
+2. Which RDF/Datalog reasoning path supports it.
+3. Which robot capability measurement changed or mattered.
+4. How this reasoning can be understood by a human user.
+5. Do not invent facts, robots, coordinates, or measurements that are not present in the JSON.
+
+RDFox explanation JSON:
+{explanationJson}";
                  string additionalExplanation = await _openAIClient.GetExplanationAsync(initialPrompt);
               // string additionalExplanation = "additionalExplanation";
 

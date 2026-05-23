@@ -53,6 +53,9 @@ const factGraph = document.querySelector("#factGraph");
 const graphDetails = document.querySelector("#graphDetails");
 const tracePanel = document.querySelector("#tracePanel");
 const nlExplanation = document.querySelector("#nlExplanation");
+const generateLlmReasoningButton = document.querySelector("#generateLlmReasoningButton");
+const llmReasoningStatus = document.querySelector("#llmReasoningStatus");
+const llmReasoningOutput = document.querySelector("#llmReasoningOutput");
 const ruleList = document.querySelector("#ruleList");
 const beforeFacts = document.querySelector("#beforeFacts");
 const afterFacts = document.querySelector("#afterFacts");
@@ -100,6 +103,7 @@ let lastLimeResult = null;
 let lastShapResult = null;
 let lastIgResult = null;
 let lastPermutationResult = null;
+let lastFactExplanationPayload = null;
 let lastFacts = [];
 let baselineFacts = [];
 let simulatedFacts = [];
@@ -931,6 +935,9 @@ function activateExplanationTab(tabId) {
   if (tabId === "sparqlTab") {
     refreshQueryViewer();
   }
+  if (tabId === "llmReasoningTab" && lastFactExplanationPayload) {
+    renderLlmReasoning(lastFactExplanationPayload);
+  }
   if (tabId === "nnXaiTab") {
     renderXaiStability();
     renderExplanationQuality();
@@ -1643,6 +1650,7 @@ async function explainFact(fact) {
       explanation_type: "shortest",
     });
 
+    lastFactExplanationPayload = payload;
     const explanation =
       payload?.data?.additionalExplanation ||
       payload?.data?.originalResponse?.additionalExplanation ||
@@ -1650,6 +1658,10 @@ async function explainFact(fact) {
       "No natural language explanation returned.";
 
     nlExplanation.textContent = explanation;
+    if (selectedFact?.type === fact.type && selectedFact?.robot === fact.robot) {
+      renderLlmReasoning(payload);
+      llmReasoningStatus.textContent = "LLM reasoning data is ready for the selected fact.";
+    }
     renderExplanationQuality();
   } catch (error) {
     nlExplanation.textContent = error.message;
@@ -1732,6 +1744,119 @@ function selectedFactXaiReportText() {
   });
 
   return lines.join("\n");
+}
+
+function makeSelectedFactContext(fact = selectedFact) {
+  if (!fact) {
+    return {
+      factText: "No selected fact.",
+      robotText: "No selected robot.",
+      capabilityText: "No selected capability.",
+      measurementsText: "No model measurements available.",
+    };
+  }
+
+  const modelResult = findModelResultForFact(fact);
+  const factName = shortName(fact.type);
+  const robotName = shortName(fact.robot);
+  const capabilityText = factName.toLowerCase().includes("precision")
+    ? "precision"
+    : factName.toLowerCase().includes("repeatability")
+      ? "repeatability"
+      : "repeatability and precision";
+  const measurementsText = modelResult
+    ? [
+        `Repeatability: ${formatValue(modelResult.repeatability)} mm`,
+        `Precision: ${formatValue(modelResult.precision)} mm`,
+        `Source: ${modelResult.source || "NN Model prediction"}`,
+      ].join("\n")
+    : "No model measurements available for selected robot.";
+
+  return {
+    factText: `${robotName} rdf:type ${factName}`,
+    robotText: robotName,
+    capabilityText,
+    measurementsText,
+  };
+}
+
+function renderLlmReasoning(payload) {
+  const context = makeSelectedFactContext();
+  const originalJson = payload?.data?.originalResponse || payload?.data?.originalResponse?.originalResponse || null;
+  const additionalExplanation =
+    payload?.data?.additionalExplanation ||
+    payload?.message ||
+    "No LLM explanation returned.";
+
+  llmReasoningOutput.innerHTML = "";
+
+  const grid = document.createElement("div");
+  grid.className = "llm-reasoning-grid";
+  [
+    ["Selected Fact", context.factText],
+    ["Capability Focus", context.capabilityText],
+    ["KG / NN Measurements", context.measurementsText],
+    ["Before Simulation Facts", factsToText(baselineFacts)],
+    ["After Simulation Facts", factsToText(simulatedFacts)],
+  ].forEach(([title, text]) => {
+    const card = document.createElement("article");
+    card.className = "llm-card";
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+    const body = document.createElement("pre");
+    body.textContent = text;
+    card.append(heading, body);
+    grid.appendChild(card);
+  });
+  llmReasoningOutput.appendChild(grid);
+
+  const explanationCard = document.createElement("article");
+  explanationCard.className = "llm-card wide";
+  explanationCard.innerHTML = "<h3>OpenAI Explanation From RDFox JSON</h3>";
+  const explanation = document.createElement("pre");
+  explanation.textContent = additionalExplanation;
+  explanationCard.appendChild(explanation);
+  llmReasoningOutput.appendChild(explanationCard);
+
+  const jsonCard = document.createElement("details");
+  jsonCard.className = "llm-json";
+  jsonCard.innerHTML = "<summary>RDFox Explanation JSON Used</summary>";
+  const jsonPre = document.createElement("pre");
+  jsonPre.textContent = originalJson
+    ? JSON.stringify(originalJson, null, 2)
+    : "No RDFox JSON returned.";
+  jsonCard.appendChild(jsonPre);
+  llmReasoningOutput.appendChild(jsonCard);
+}
+
+async function generateLlmReasoning() {
+  if (!selectedFact) {
+    llmReasoningStatus.textContent = "Select a reasoned fact first from the Reasoned Facts tab.";
+    return;
+  }
+
+  try {
+    generateLlmReasoningButton.disabled = true;
+    generateLlmReasoningButton.textContent = "Generating...";
+    llmReasoningStatus.textContent = "Generating LLM reasoning explanation from RDFox JSON...";
+
+    const payload = await postJson(factExplainUrl, {
+      store_name: datastoreInput.value.trim() || "S-XAI",
+      fact_query: makeFactSyntax(selectedFact),
+      explanation_type: "shortest",
+    });
+
+    lastFactExplanationPayload = payload;
+    renderLlmReasoning(payload);
+    llmReasoningStatus.textContent = "LLM reasoning explanation generated from the selected fact and RDFox JSON.";
+    appendRuleLog("OpenAI LLM reasoning-change explanation generated.");
+  } catch (error) {
+    llmReasoningStatus.textContent = error.message;
+    appendRuleLog(`OpenAI LLM reasoning explanation failed: ${error.message}`);
+  } finally {
+    generateLlmReasoningButton.disabled = false;
+    generateLlmReasoningButton.textContent = "Generate LLM";
+  }
 }
 
 function escapeHtml(value) {
@@ -2115,6 +2240,9 @@ async function executePrediction() {
     lastResult = payload.data[0];
     lastCoordinates = coordinates;
     selectedFact = null;
+    lastFactExplanationPayload = null;
+    llmReasoningOutput.innerHTML = "";
+    llmReasoningStatus.textContent = "Select a reasoned fact, then generate the LLM explanation.";
     resetNnXaiPanels();
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
@@ -2201,6 +2329,7 @@ applySimulationButton.addEventListener("click", applySimulationValues);
 submitButton.addEventListener("click", submitOntologyUpdate);
 refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
+generateLlmReasoningButton.addEventListener("click", generateLlmReasoning);
 refreshLimeButton.addEventListener("click", runLimeExplanation);
 refreshShapButton.addEventListener("click", runShapExplanation);
 refreshIgButton.addEventListener("click", runIntegratedGradientsExplanation);
