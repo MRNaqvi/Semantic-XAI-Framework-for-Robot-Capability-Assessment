@@ -948,6 +948,33 @@ body {
   gap: 12px;
 }
 
+.llm-model-field {
+  max-width: 420px;
+  min-height: 46px;
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.llm-model-field input {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid var(--field-border);
+  border-radius: 5px;
+  background: var(--field);
+  color: var(--text);
+  padding: 0 10px;
+  font-weight: 700;
+}
+
 .llm-card,
 .llm-json {
   padding: 14px;
@@ -964,6 +991,13 @@ body {
   margin: 0 0 8px;
   color: var(--accent);
   font-size: 15px;
+}
+
+.llm-meta {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .llm-card pre,

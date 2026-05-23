@@ -1,7 +1,10 @@
 from pathlib import Path
 import io
+import json
 import os
 import tempfile
+import urllib.error
+import urllib.request
 import zipfile
 
 os.environ.setdefault(
@@ -67,6 +70,8 @@ MODELS = {}
 MODEL_LOAD_ERRORS = {}
 FEATURE_NAMES = ["X", "Y", "Z"]
 OUTPUT_LABELS = ["repeatability", "precision"]
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
 
 
 def load_models():
@@ -448,6 +453,69 @@ def explain_model_with_permutation_importance(config, coordinates):
     }
 
 
+def build_open_llm_prompt(payload):
+    selected_fact = payload.get("selected_fact", "No selected fact.")
+    capability_focus = payload.get("capability_focus", "not specified")
+    measurements = payload.get("measurements", "No measurements provided.")
+    before_facts = payload.get("before_facts", "No before facts provided.")
+    after_facts = payload.get("after_facts", "No after facts provided.")
+    rdfox_json = json.dumps(payload.get("rdfox_json", {}), indent=2)
+
+    return f"""You are an open-source LLM explaining a Semantic XAI result for robot suitability in manufacturing.
+
+Use only the supplied data. Do not invent robot names, values, rules, facts, coordinates, or ontology terms.
+
+Explain in clear natural language:
+1. The selected reasoned fact.
+2. The capability measurement values involved.
+3. What changed between the before and after facts, if anything changed.
+4. How RDFox/Datalog reasoning supports the selected fact from the JSON.
+5. Why this explanation is useful for a human user.
+
+Selected fact:
+{selected_fact}
+
+Capability focus:
+{capability_focus}
+
+Measurements:
+{measurements}
+
+Before facts:
+{before_facts}
+
+After facts:
+{after_facts}
+
+RDFox explanation JSON:
+{rdfox_json}
+"""
+
+
+def call_ollama(prompt, model):
+    request_body = json.dumps(
+        {
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.2,
+            },
+        }
+    ).encode("utf-8")
+
+    request_data = urllib.request.Request(
+        f"{OLLAMA_URL}/api/generate",
+        data=request_body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with urllib.request.urlopen(request_data, timeout=120) as response:
+        body = json.loads(response.read().decode("utf-8"))
+        return body.get("response", "").strip()
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
@@ -717,6 +785,61 @@ def explain_permutation():
             }
         )
 
+    except Exception as exc:
+        return (
+            jsonify(
+                {
+                    "code": 400,
+                    "status": False,
+                    "message": str(exc),
+                    "data": "",
+                }
+            ),
+            400,
+        )
+
+
+@app.route("/llm/reasoning", methods=["POST"])
+def explain_with_open_llm():
+    try:
+        request_body = request.get_json(silent=True) or {}
+        model = request_body.get("model") or OLLAMA_MODEL
+        prompt = build_open_llm_prompt(request_body)
+        explanation = call_ollama(prompt, model)
+
+        if not explanation:
+            raise RuntimeError("The local open LLM returned an empty response.")
+
+        return jsonify(
+            {
+                "code": 202,
+                "status": True,
+                "message": "Open local LLM explanation generated successfully.",
+                "data": {
+                    "provider": "Ollama",
+                    "model": model,
+                    "explanation": explanation,
+                    "prompt": prompt,
+                },
+            }
+        )
+
+    except urllib.error.URLError as exc:
+        return (
+            jsonify(
+                {
+                    "code": 400,
+                    "status": False,
+                    "message": (
+                        "Could not reach Ollama at "
+                        f"{OLLAMA_URL}. Start Ollama and pull a model, for example: "
+                        "ollama pull llama3.2:3b"
+                    ),
+                    "data": str(exc),
+                }
+            ),
+            400,
+        )
     except Exception as exc:
         return (
             jsonify(

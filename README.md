@@ -8,6 +8,7 @@ This project runs a robot operational capability workflow:
 - RDFox 7.5b stores the ontology, Datalog rules, and facts.
 - LIME and SHAP provide local NN XAI feature influence for `X`, `Y`, and `Z`.
 - Natural language explanations are optional and require the user's own OpenAI API key.
+- The LLM Reasoning tab can use a free local open model through Ollama, so it does not require an OpenAI key.
 
 ## Version Note
 
@@ -20,6 +21,7 @@ This S-XAI demo version includes Natural Language explanations. To enable them, 
 - .NET SDK 8 or newer
 - RDFox 7.5b license file
 - Optional: OpenAI API key for natural language explanations
+- Optional: Ollama for free local open-model reasoning in the LLM Reasoning tab
 - Python packages from `App\requirements.txt`, including TensorFlow, LIME, and SHAP
 
 RDFox 7.5b runtime files are included under:
@@ -108,6 +110,25 @@ For Natural Language explanations, add your OpenAI key to `config.local.ps1`:
 $env:OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
 ```
 
+For the LLM Reasoning tab without OpenAI, install Ollama and pull a local model:
+
+```powershell
+ollama pull llama3.2:3b
+```
+
+By default the Flask app calls:
+
+```text
+http://127.0.0.1:11434
+```
+
+You can choose another local Ollama model in the UI, or set these optional values in `config.local.ps1`:
+
+```powershell
+$env:OLLAMA_URL = "http://127.0.0.1:11434"
+$env:OLLAMA_MODEL = "llama3.2:3b"
+```
+
 ## One Command Run
 
 If Python dependencies are missing on a fresh machine, install the Flask model API requirements first:
@@ -171,6 +192,8 @@ powershell -ExecutionPolicy Bypass -File ".\Start-Web.ps1"
 7. Use `Refresh Facts`, `View Graph`, and `Explain`.
 
 Natural language explanation requires `OPENAI_API_KEY`. Without it, facts and graph view still work.
+
+The separate `LLM Reasoning` tab can use Ollama with a free local open model. This tab reads raw RDFox explanation JSON and sends it to the local model through Flask; it does not call OpenAI.
 
 ## Custom Inputs
 

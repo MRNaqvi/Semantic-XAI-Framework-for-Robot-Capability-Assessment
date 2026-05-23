@@ -240,6 +240,44 @@ RDFox explanation JSON:
         }
 
 
+        [Route("FactExplainRaw")]
+        [HttpPost]
+        public async Task<IActionResult> ExplainFactDerivationRawAsync(QueryFact queryFact)
+        {
+            string dataStore = queryFact.store_name;
+            if (string.IsNullOrEmpty(dataStore))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, dataStore);
+            }
+
+            string fact = queryFact.fact_query;
+            if (string.IsNullOrEmpty(fact))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, fact);
+            }
+
+            string explanationType = queryFact.explanation_type;
+
+            try
+            {
+                string explanationJson = await _rdfClient.ExplainFactDerivationAsync(dataStore, fact, explanationType);
+                var parsedResponse = JsonDocument.Parse(explanationJson);
+
+                var responseObject = new
+                {
+                    originalResponse = parsedResponse.RootElement
+                };
+
+                return StatusCode(StatusCodes.Status200OK, ApiResponse.CreatResponse("", responseObject, "List", 0));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to explain fact derivation without OpenAI. Error: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
+
         [Route("Insert")]
         [HttpPost]
         public async Task<IActionResult> InsertDataAsync(QueryParam queryparam)

@@ -2,6 +2,7 @@ const predictUrl = "http://127.0.0.1:5000/predict";
 const backendUrl = "http://localhost:11191/api/Query/Insert";
 const selectUrl = "http://localhost:11191/api/Query/Select";
 const factExplainUrl = "http://localhost:11191/api/Query/FactExplain";
+const factExplainRawUrl = "http://localhost:11191/api/Query/FactExplainRaw";
 const uploadTtlUrl = "http://localhost:11191/api/Query/UploadTTL";
 const uploadRuleUrl = "http://localhost:11191/api/Query/UploadRule";
 const modelStatusUrl = "http://127.0.0.1:5000/models/status";
@@ -10,6 +11,7 @@ const limeExplainUrl = "http://127.0.0.1:5000/explain/lime";
 const shapExplainUrl = "http://127.0.0.1:5000/explain/shap";
 const integratedGradientsUrl = "http://127.0.0.1:5000/explain/integrated-gradients";
 const permutationExplainUrl = "http://127.0.0.1:5000/explain/permutation";
+const openLlmReasoningUrl = "http://127.0.0.1:5000/llm/reasoning";
 
 const robotOrder = ["IRB 1200", "IRB 2400", "Ned 2"];
 const robotDisplayName = {
@@ -56,6 +58,7 @@ const nlExplanation = document.querySelector("#nlExplanation");
 const generateLlmReasoningButton = document.querySelector("#generateLlmReasoningButton");
 const llmReasoningStatus = document.querySelector("#llmReasoningStatus");
 const llmReasoningOutput = document.querySelector("#llmReasoningOutput");
+const openLlmModel = document.querySelector("#openLlmModel");
 const ruleList = document.querySelector("#ruleList");
 const beforeFacts = document.querySelector("#beforeFacts");
 const afterFacts = document.querySelector("#afterFacts");
@@ -1650,7 +1653,6 @@ async function explainFact(fact) {
       explanation_type: "shortest",
     });
 
-    lastFactExplanationPayload = payload;
     const explanation =
       payload?.data?.additionalExplanation ||
       payload?.data?.originalResponse?.additionalExplanation ||
@@ -1658,10 +1660,9 @@ async function explainFact(fact) {
       "No natural language explanation returned.";
 
     nlExplanation.textContent = explanation;
-    if (selectedFact?.type === fact.type && selectedFact?.robot === fact.robot) {
-      renderLlmReasoning(payload);
-      llmReasoningStatus.textContent = "LLM reasoning data is ready for the selected fact.";
-    }
+    llmReasoningStatus.textContent = "Selected fact is ready. Use Generate Open LLM in the LLM Reasoning tab.";
+    llmReasoningOutput.innerHTML = "";
+    lastFactExplanationPayload = null;
     renderExplanationQuality();
   } catch (error) {
     nlExplanation.textContent = error.message;
@@ -1785,8 +1786,11 @@ function renderLlmReasoning(payload) {
   const originalJson = payload?.data?.originalResponse || payload?.data?.originalResponse?.originalResponse || null;
   const additionalExplanation =
     payload?.data?.additionalExplanation ||
+    payload?.data?.explanation ||
     payload?.message ||
     "No LLM explanation returned.";
+  const provider = payload?.data?.provider || "Open local LLM";
+  const model = payload?.data?.model || openLlmModel?.value?.trim() || "llama3.2:3b";
 
   llmReasoningOutput.innerHTML = "";
 
@@ -1812,7 +1816,7 @@ function renderLlmReasoning(payload) {
 
   const explanationCard = document.createElement("article");
   explanationCard.className = "llm-card wide";
-  explanationCard.innerHTML = "<h3>OpenAI Explanation From RDFox JSON</h3>";
+  explanationCard.innerHTML = `<h3>Open Local LLM Explanation From RDFox JSON</h3><p class="llm-meta">${provider} model: ${model}</p>`;
   const explanation = document.createElement("pre");
   explanation.textContent = additionalExplanation;
   explanationCard.appendChild(explanation);
@@ -1838,24 +1842,49 @@ async function generateLlmReasoning() {
   try {
     generateLlmReasoningButton.disabled = true;
     generateLlmReasoningButton.textContent = "Generating...";
-    llmReasoningStatus.textContent = "Generating LLM reasoning explanation from RDFox JSON...";
+    llmReasoningStatus.textContent = "Fetching raw RDFox JSON, then asking the local open LLM...";
 
-    const payload = await postJson(factExplainUrl, {
+    const rawPayload = await postJson(factExplainRawUrl, {
       store_name: datastoreInput.value.trim() || "S-XAI",
       fact_query: makeFactSyntax(selectedFact),
       explanation_type: "shortest",
     });
 
+    const context = makeSelectedFactContext();
+    const model = openLlmModel?.value?.trim() || "llama3.2:3b";
+    const openPayload = await postJson(openLlmReasoningUrl, {
+      model,
+      selected_fact: context.factText,
+      capability_focus: context.capabilityText,
+      measurements: context.measurementsText,
+      before_facts: factsToText(baselineFacts),
+      after_facts: factsToText(simulatedFacts),
+      rdfox_json: rawPayload?.data?.originalResponse || null,
+    });
+
+    const payload = {
+      code: 202,
+      status: true,
+      message: openPayload?.message || "Open local LLM explanation generated successfully.",
+      data: {
+        originalResponse: rawPayload?.data?.originalResponse || null,
+        additionalExplanation: openPayload?.data?.explanation || openPayload?.message || "",
+        provider: openPayload?.data?.provider || "Ollama",
+        model: openPayload?.data?.model || model,
+        prompt: openPayload?.data?.prompt || "",
+      },
+    };
+
     lastFactExplanationPayload = payload;
     renderLlmReasoning(payload);
-    llmReasoningStatus.textContent = "LLM reasoning explanation generated from the selected fact and RDFox JSON.";
-    appendRuleLog("OpenAI LLM reasoning-change explanation generated.");
+    llmReasoningStatus.textContent = `Open local LLM explanation generated with ${payload.data.provider} model ${payload.data.model}.`;
+    appendRuleLog(`Open local LLM reasoning-change explanation generated with ${payload.data.model}.`);
   } catch (error) {
     llmReasoningStatus.textContent = error.message;
-    appendRuleLog(`OpenAI LLM reasoning explanation failed: ${error.message}`);
+    appendRuleLog(`Open local LLM reasoning explanation failed: ${error.message}`);
   } finally {
     generateLlmReasoningButton.disabled = false;
-    generateLlmReasoningButton.textContent = "Generate LLM";
+    generateLlmReasoningButton.textContent = "Generate Open LLM";
   }
 }
 
@@ -2242,7 +2271,7 @@ async function executePrediction() {
     selectedFact = null;
     lastFactExplanationPayload = null;
     llmReasoningOutput.innerHTML = "";
-    llmReasoningStatus.textContent = "Select a reasoned fact, then generate the LLM explanation.";
+    llmReasoningStatus.textContent = "Select a reasoned fact, then generate the open local LLM explanation.";
     resetNnXaiPanels();
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
