@@ -73,8 +73,8 @@ FEATURE_NAMES = ["X", "Y", "Z"]
 OUTPUT_LABELS = ["repeatability", "precision"]
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
-OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "90"))
-OLLAMA_MAX_JSON_CHARS = int(os.environ.get("OLLAMA_MAX_JSON_CHARS", "3500"))
+OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "140"))
+OLLAMA_MAX_JSON_CHARS = int(os.environ.get("OLLAMA_MAX_JSON_CHARS", "1200"))
 
 
 def load_models():
@@ -463,7 +463,7 @@ def compact_text(value, max_chars=1200):
     return f"{text[:max_chars]}... [truncated]"
 
 
-def collect_rdfox_terms(value, limit=40):
+def collect_rdfox_terms(value, limit=16):
     terms = []
 
     def visit(item):
@@ -498,37 +498,36 @@ def build_open_llm_prompt(payload):
     rdfox_terms = collect_rdfox_terms(rdfox_json)
     rdfox_terms_text = "\n".join(f"- {term}" for term in rdfox_terms) or "No RCO/RDF terms were found in the JSON."
 
-    return f"""You are an open-source LLM explaining a Semantic XAI result for robot suitability in manufacturing.
+    return f"""Explain this Semantic XAI robot-suitability result for a human manufacturing user.
 
-Use only the supplied data. Do not invent robot names, values, rules, facts, coordinates, or ontology terms.
-Be concise. Write at most 180 words.
+Use only the supplied data. Do not invent robot names, values, rules, facts, coordinates, or ontology terms. Keep it under 120 words.
+Domain rule: lower repeatability error is better; higher precision capability is better.
 
 Explain in this exact structure:
 Selected fact:
-Capability values:
-Reasoning change:
-RDFox/Datalog support:
-Human usefulness:
+Values:
+Reasoning:
+Human meaning:
 
 Selected fact:
-{compact_text(selected_fact, 500)}
+{compact_text(selected_fact, 280)}
 
 Capability focus:
-{compact_text(capability_focus, 300)}
+{compact_text(capability_focus, 120)}
 
 Measurements:
-{compact_text(measurements, 900)}
+{compact_text(measurements, 420)}
 
 Before facts:
-{compact_text(before_facts, 900)}
+{compact_text(before_facts, 360)}
 
 After facts:
-{compact_text(after_facts, 900)}
+{compact_text(after_facts, 360)}
 
-Important RDFox/RCO terms extracted from the explanation JSON:
+JSON-derived RDFox/RCO evidence:
 {rdfox_terms_text}
 
-Compact RDFox explanation JSON excerpt:
+Compact JSON excerpt:
 {rdfox_json_excerpt}
 """
 
@@ -541,8 +540,8 @@ def call_ollama(prompt, model):
             "stream": False,
             "options": {
                 "temperature": 0.2,
-                "num_ctx": 4096,
-                "num_predict": 450,
+                "num_ctx": 2048,
+                "num_predict": 220,
                 "top_p": 0.85,
             },
         }
@@ -878,7 +877,7 @@ def explain_with_open_llm():
                     "message": (
                         f"Ollama model '{model}' did not answer within "
                         f"{OLLAMA_TIMEOUT_SECONDS} seconds. The prompt is compacted for local models; "
-                        "try again, or use a smaller/faster Ollama model."
+                        "try again, or use a smaller/faster Ollama model such as llama3.2:1b."
                     ),
                     "data": str(exc),
                 }
