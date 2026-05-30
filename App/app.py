@@ -1,7 +1,9 @@
 from pathlib import Path
+import html
 import io
 import json
 import os
+import re
 import socket
 import tempfile
 import urllib.error
@@ -74,7 +76,6 @@ OUTPUT_LABELS = ["repeatability", "precision"]
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
 OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "140"))
-OLLAMA_MAX_JSON_CHARS = int(os.environ.get("OLLAMA_MAX_JSON_CHARS", "1200"))
 
 
 def load_models():
@@ -463,27 +464,111 @@ def compact_text(value, max_chars=1200):
     return f"{text[:max_chars]}... [truncated]"
 
 
-def collect_rdfox_terms(value, limit=16):
-    terms = []
+def simplify_rdfox_text(value, max_chars=900):
+    text = html.unescape(str(value or ""))
+    text = re.sub(r"<span[^>]*>", "", text)
+    text = text.replace("</span>", "")
+    text = re.sub(r"<http://RCO\.enit\.fr/([^>]+)>", r"RCO:\1", text)
+    text = re.sub(r"http://RCO\.enit\.fr/([A-Za-z0-9_-]+)", r"RCO:\1", text)
+    text = text.replace("xsd:decimal", "decimal")
+    text = re.sub(r"\s+", " ", text).strip()
+    return compact_text(text, max_chars)
 
-    def visit(item):
-        if len(terms) >= limit:
-            return
-        if isinstance(item, dict):
-            for key, nested in item.items():
-                visit(key)
-                visit(nested)
-        elif isinstance(item, list):
-            for nested in item:
-                visit(nested)
-        elif isinstance(item, str):
-            if "RCO:" in item or "http://RCO.enit.fr" in item or "rdf:type" in item:
-                cleaned = item.strip()
-                if cleaned and cleaned not in terms:
-                    terms.append(cleaned)
 
-    visit(value)
-    return terms
+def extract_rdfox_rule_evidence(rdfox_json):
+    facts = rdfox_json.get("facts", {}) if isinstance(rdfox_json, dict) else {}
+    if isinstance(facts, list):
+        fact_items = facts
+    elif isinstance(facts, dict):
+        fact_items = list(facts.values())
+    else:
+        fact_items = []
+
+    root_fact = next(
+        (fact for fact in fact_items if fact.get("distance-from-root") == 0),
+        fact_items[0] if fact_items else {},
+    )
+    rule_instances = root_fact.get("rule-instances") or []
+    root_rule = rule_instances[0].get("rule") if rule_instances else ""
+    body_fact_ids = set()
+    if rule_instances:
+        body_fact_ids = {
+            str(item)
+            for item in rule_instances[0].get("body-facts", [])
+            if item is not None
+        }
+
+    body_facts = []
+    if isinstance(facts, dict):
+        for fact_id in body_fact_ids:
+            fact = facts.get(fact_id)
+            if fact and fact.get("fact"):
+                body_facts.append(simplify_rdfox_text(fact["fact"], 220))
+    else:
+        body_facts = [
+            simplify_rdfox_text(fact.get("fact"), 220)
+            for fact in fact_items
+            if fact.get("distance-from-root") == 1 and fact.get("fact")
+        ]
+
+    return {
+        "root_fact": simplify_rdfox_text(root_fact.get("fact"), 260),
+        "rule": simplify_rdfox_text(root_rule, 900),
+        "body_facts": body_facts[:5],
+    }
+
+
+def extract_measurement_value(measurements, label):
+    match = re.search(rf"{label}\s*:\s*(\[[^\]]+\]|[-+]?\d*\.?\d+)", measurements, re.IGNORECASE)
+    return match.group(1) if match else "not available"
+
+
+def build_rule_based_llm_draft(payload, evidence):
+    selected_fact = simplify_rdfox_text(payload.get("selected_fact", "selected fact"), 260)
+    measurements = payload.get("measurements", "")
+    repeatability = extract_measurement_value(measurements, "Repeatability")
+    precision = extract_measurement_value(measurements, "Precision")
+    robot = selected_fact.split(" rdf:type ")[0].strip() if " rdf:type " in selected_fact else selected_fact
+    fact_name = selected_fact.split(" rdf:type ")[-1].strip() if " rdf:type " in selected_fact else evidence["root_fact"]
+    fact_words = re.sub(r"(?<!^)([A-Z])", r" \1", fact_name).strip().lower()
+
+    if "Repeatability" in fact_name:
+        rule_reason = (
+            "the Datalog rule checks the robot repeatability measurement and RDFox confirms it equals "
+            "the minimum repeatability capability value among the compared robots"
+        )
+    elif "Precision" in fact_name:
+        rule_reason = (
+            "the Datalog rule checks the robot precision measurement and RDFox confirms it equals "
+            "the maximum precision capability value among the compared robots"
+        )
+    else:
+        rule_reason = "RDFox applies the Datalog rule evidence shown for the selected fact"
+    value_text = (
+        f"operational repeatability value is {repeatability} mm and "
+        f"operational precision value is {precision} mm"
+    )
+
+    return (
+        f"{robot} is selected as {fact_words} because its {value_text}. "
+        f"This follows from RDFox reasoning because {rule_reason}."
+    )
+
+
+def local_llm_answer_drifted(answer):
+    lowered = answer.lower()
+    bad_phrases = [
+        "json format",
+        "prefixes",
+        "dictionary",
+        "here is",
+        "here's a breakdown",
+        "resource description framework",
+        "minimum required value",
+        "high repeatability performance",
+    ]
+    missing_rule_reason = "rdfox" not in lowered and "datalog" not in lowered and "rule" not in lowered
+    return missing_rule_reason or any(phrase in lowered for phrase in bad_phrases)
 
 
 def build_open_llm_prompt(payload):
@@ -493,21 +578,19 @@ def build_open_llm_prompt(payload):
     before_facts = payload.get("before_facts", "No before facts provided.")
     after_facts = payload.get("after_facts", "No after facts provided.")
     rdfox_json = payload.get("rdfox_json", {})
-    rdfox_json_text = json.dumps(rdfox_json, ensure_ascii=False, separators=(",", ":"))
-    rdfox_json_excerpt = compact_text(rdfox_json_text, OLLAMA_MAX_JSON_CHARS)
-    rdfox_terms = collect_rdfox_terms(rdfox_json)
-    rdfox_terms_text = "\n".join(f"- {term}" for term in rdfox_terms) or "No RCO/RDF terms were found in the JSON."
+    evidence = extract_rdfox_rule_evidence(rdfox_json)
+    body_facts = "\n".join(f"- {fact}" for fact in evidence["body_facts"]) or "No body facts available."
+    draft = build_rule_based_llm_draft(payload, evidence)
 
-    return f"""Explain this Semantic XAI robot-suitability result for a human manufacturing user.
+    return f"""Rewrite the draft explanation for a manufacturing user.
 
-Use only the supplied data. Do not invent robot names, values, rules, facts, coordinates, or ontology terms. Keep it under 120 words.
+Use only the draft and evidence. Do not explain RDF, JSON, prefixes, fields, or data format. Keep exactly two short sentences.
 Domain rule: lower repeatability error is better; higher precision capability is better.
+Do not say "minimum required value"; say "minimum repeatability capability value among the compared robots" when explaining repeatability.
+Mention both repeatability and precision values exactly as they appear in the draft.
 
-Explain in this exact structure:
-Selected fact:
-Values:
-Reasoning:
-Human meaning:
+Draft explanation:
+{draft}
 
 Selected fact:
 {compact_text(selected_fact, 280)}
@@ -524,11 +607,14 @@ Before facts:
 After facts:
 {compact_text(after_facts, 360)}
 
-JSON-derived RDFox/RCO evidence:
-{rdfox_terms_text}
+RDFox selected fact:
+{evidence["root_fact"]}
 
-Compact JSON excerpt:
-{rdfox_json_excerpt}
+Datalog rule evidence:
+{evidence["rule"]}
+
+Rule body facts used:
+{body_facts}
 """
 
 
@@ -541,7 +627,7 @@ def call_ollama(prompt, model):
             "options": {
                 "temperature": 0.2,
                 "num_ctx": 2048,
-                "num_predict": 220,
+                "num_predict": 140,
                 "top_p": 0.85,
             },
         }
@@ -847,11 +933,15 @@ def explain_with_open_llm():
     try:
         request_body = request.get_json(silent=True) or {}
         model = request_body.get("model") or OLLAMA_MODEL
+        evidence = extract_rdfox_rule_evidence(request_body.get("rdfox_json", {}))
+        draft = build_rule_based_llm_draft(request_body, evidence)
         prompt = build_open_llm_prompt(request_body)
         explanation = call_ollama(prompt, model)
 
         if not explanation:
             raise RuntimeError("The local open LLM returned an empty response.")
+        if local_llm_answer_drifted(explanation):
+            explanation = draft
 
         return jsonify(
             {
@@ -864,6 +954,7 @@ def explain_with_open_llm():
                     "explanation": explanation,
                     "prompt": prompt,
                     "prompt_characters": len(prompt),
+                    "draft_explanation": draft,
                 },
             }
         )
