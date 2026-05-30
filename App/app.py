@@ -2,6 +2,7 @@ from pathlib import Path
 import io
 import json
 import os
+import socket
 import tempfile
 import urllib.error
 import urllib.request
@@ -72,6 +73,8 @@ FEATURE_NAMES = ["X", "Y", "Z"]
 OUTPUT_LABELS = ["repeatability", "precision"]
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "90"))
+OLLAMA_MAX_JSON_CHARS = int(os.environ.get("OLLAMA_MAX_JSON_CHARS", "3500"))
 
 
 def load_models():
@@ -453,42 +456,80 @@ def explain_model_with_permutation_importance(config, coordinates):
     }
 
 
+def compact_text(value, max_chars=1200):
+    text = str(value or "").strip()
+    if len(text) <= max_chars:
+        return text
+    return f"{text[:max_chars]}... [truncated]"
+
+
+def collect_rdfox_terms(value, limit=40):
+    terms = []
+
+    def visit(item):
+        if len(terms) >= limit:
+            return
+        if isinstance(item, dict):
+            for key, nested in item.items():
+                visit(key)
+                visit(nested)
+        elif isinstance(item, list):
+            for nested in item:
+                visit(nested)
+        elif isinstance(item, str):
+            if "RCO:" in item or "http://RCO.enit.fr" in item or "rdf:type" in item:
+                cleaned = item.strip()
+                if cleaned and cleaned not in terms:
+                    terms.append(cleaned)
+
+    visit(value)
+    return terms
+
+
 def build_open_llm_prompt(payload):
     selected_fact = payload.get("selected_fact", "No selected fact.")
     capability_focus = payload.get("capability_focus", "not specified")
     measurements = payload.get("measurements", "No measurements provided.")
     before_facts = payload.get("before_facts", "No before facts provided.")
     after_facts = payload.get("after_facts", "No after facts provided.")
-    rdfox_json = json.dumps(payload.get("rdfox_json", {}), indent=2)
+    rdfox_json = payload.get("rdfox_json", {})
+    rdfox_json_text = json.dumps(rdfox_json, ensure_ascii=False, separators=(",", ":"))
+    rdfox_json_excerpt = compact_text(rdfox_json_text, OLLAMA_MAX_JSON_CHARS)
+    rdfox_terms = collect_rdfox_terms(rdfox_json)
+    rdfox_terms_text = "\n".join(f"- {term}" for term in rdfox_terms) or "No RCO/RDF terms were found in the JSON."
 
     return f"""You are an open-source LLM explaining a Semantic XAI result for robot suitability in manufacturing.
 
 Use only the supplied data. Do not invent robot names, values, rules, facts, coordinates, or ontology terms.
+Be concise. Write at most 180 words.
 
-Explain in clear natural language:
-1. The selected reasoned fact.
-2. The capability measurement values involved.
-3. What changed between the before and after facts, if anything changed.
-4. How RDFox/Datalog reasoning supports the selected fact from the JSON.
-5. Why this explanation is useful for a human user.
+Explain in this exact structure:
+Selected fact:
+Capability values:
+Reasoning change:
+RDFox/Datalog support:
+Human usefulness:
 
 Selected fact:
-{selected_fact}
+{compact_text(selected_fact, 500)}
 
 Capability focus:
-{capability_focus}
+{compact_text(capability_focus, 300)}
 
 Measurements:
-{measurements}
+{compact_text(measurements, 900)}
 
 Before facts:
-{before_facts}
+{compact_text(before_facts, 900)}
 
 After facts:
-{after_facts}
+{compact_text(after_facts, 900)}
 
-RDFox explanation JSON:
-{rdfox_json}
+Important RDFox/RCO terms extracted from the explanation JSON:
+{rdfox_terms_text}
+
+Compact RDFox explanation JSON excerpt:
+{rdfox_json_excerpt}
 """
 
 
@@ -500,6 +541,9 @@ def call_ollama(prompt, model):
             "stream": False,
             "options": {
                 "temperature": 0.2,
+                "num_ctx": 4096,
+                "num_predict": 450,
+                "top_p": 0.85,
             },
         }
     ).encode("utf-8")
@@ -511,7 +555,7 @@ def call_ollama(prompt, model):
         method="POST",
     )
 
-    with urllib.request.urlopen(request_data, timeout=120) as response:
+    with urllib.request.urlopen(request_data, timeout=OLLAMA_TIMEOUT_SECONDS) as response:
         body = json.loads(response.read().decode("utf-8"))
         return body.get("response", "").strip()
 
@@ -820,10 +864,43 @@ def explain_with_open_llm():
                     "model": model,
                     "explanation": explanation,
                     "prompt": prompt,
+                    "prompt_characters": len(prompt),
                 },
             }
         )
 
+    except (TimeoutError, socket.timeout) as exc:
+        return (
+            jsonify(
+                {
+                    "code": 504,
+                    "status": False,
+                    "message": (
+                        f"Ollama model '{model}' did not answer within "
+                        f"{OLLAMA_TIMEOUT_SECONDS} seconds. The prompt is compacted for local models; "
+                        "try again, or use a smaller/faster Ollama model."
+                    ),
+                    "data": str(exc),
+                }
+            ),
+            504,
+        )
+    except urllib.error.HTTPError as exc:
+        try:
+            error_body = exc.read().decode("utf-8")
+        except Exception:
+            error_body = str(exc)
+        return (
+            jsonify(
+                {
+                    "code": exc.code,
+                    "status": False,
+                    "message": f"Ollama returned HTTP {exc.code}: {error_body}",
+                    "data": "",
+                }
+            ),
+            502,
+        )
     except urllib.error.URLError as exc:
         return (
             jsonify(
