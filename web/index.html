@@ -117,8 +117,8 @@
 
       <div class="api-key-note">
         <h3>Natural Language Explanations</h3>
-        <p>To enable Natural Language explanations, add your OpenAI API key in <code>config.local.ps1</code> as <code>$env:OPENAI_API_KEY</code>, then restart the application.</p>
-        <p>Start from <code>config.template.ps1</code>; your local key file is ignored by Git.</p>
+        <p>OpenAI explanations can use a key pasted in the Natural Language tab. Ollama explanations run locally with the configured open model.</p>
+        <p>For persistent OpenAI configuration, start from <code>config.template.ps1</code>; your local key file is ignored by Git.</p>
       </div>
 
       <details class="further-reads">
@@ -157,7 +157,6 @@
         <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Counterfactual</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nnXaiTab">NN XAI</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nlTab">Natural Language</button>
-        <button class="explanation-tab" type="button" data-explanation-tab="llmReasoningTab">LLM Reasoning</button>
         <button class="explanation-tab" type="button" data-explanation-tab="rulesTab">Rules</button>
         <button class="explanation-tab" type="button" data-explanation-tab="sparqlTab">SPARQL</button>
       </div>
@@ -219,22 +218,21 @@
       </section>
 
       <section class="explanation-panel" id="nlTab" hidden>
-        <h2>Natural Language Explanation</h2>
-        <pre id="nlExplanation">Select a fact and click Explain. Add your OpenAI API key to get natural language explanations.</pre>
-      </section>
-
-      <section class="explanation-panel" id="llmReasoningTab" hidden>
         <div class="section-head compact-head">
-          <h2>Open LLM Reasoning Change Explanation</h2>
-          <button id="generateLlmReasoningButton" class="pill small-pill" type="button">Generate Open LLM</button>
+          <h2>Natural Language Explanation</h2>
+          <div class="section-actions">
+            <button id="generateOpenAiExplanationButton" class="pill small-pill" type="button">Use OpenAI</button>
+            <button id="generateLlmReasoningButton" class="pill small-pill" type="button">Use Ollama</button>
+          </div>
         </div>
-        <p class="xai-note">Uses a free local open model through Ollama. Natural Language explanations stay separate and still use the OpenAI API key only when you choose that tab.</p>
+        <p class="xai-note">Choose OpenAI with your API key or use the free local Ollama model. Both explain the selected RDFox/Datalog fact in natural language.</p>
         <label class="llm-model-field" for="openLlmModel">
-          Open model
+          Ollama model
           <input id="openLlmModel" type="text" value="llama3.2:3b" autocomplete="off">
         </label>
-        <p class="xai-note">Install Ollama and run <code>ollama pull llama3.2:3b</code>. Then select a reasoned fact and generate an explanation from RDFox JSON, KG measurement values, and before/after facts.</p>
-        <div id="llmReasoningStatus" class="status-text">Select a reasoned fact, then generate the open local LLM explanation.</div>
+        <p class="xai-note">For Ollama, install Ollama and run <code>ollama pull llama3.2:3b</code>. For OpenAI, click Use OpenAI and paste your key when asked.</p>
+        <div id="llmReasoningStatus" class="status-text">Select a reasoned fact, then choose OpenAI or Ollama.</div>
+        <pre id="nlExplanation">Select a fact and click Explain.</pre>
         <div id="llmReasoningOutput" class="llm-reasoning-output"></div>
       </section>
 
@@ -350,6 +348,18 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=20260523-open-llm-timeout"></script>
+  <dialog id="openAiKeyDialog" class="key-dialog">
+    <form method="dialog" class="key-dialog-content">
+      <h2>OpenAI API Key</h2>
+      <p>Paste your OpenAI API key for this browser session. It is not saved to project files.</p>
+      <input id="openAiKeyInput" type="password" autocomplete="off" placeholder="sk-...">
+      <div class="dialog-actions">
+        <button id="saveOpenAiKeyButton" class="modal-button" type="button">Use Key</button>
+        <button id="cancelOpenAiKeyButton" class="modal-button" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js?v=20260530-nl-provider-choice"></script>
 </body>
 </html>

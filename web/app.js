@@ -57,10 +57,15 @@ const factGraph = document.querySelector("#factGraph");
 const graphDetails = document.querySelector("#graphDetails");
 const tracePanel = document.querySelector("#tracePanel");
 const nlExplanation = document.querySelector("#nlExplanation");
+const generateOpenAiExplanationButton = document.querySelector("#generateOpenAiExplanationButton");
 const generateLlmReasoningButton = document.querySelector("#generateLlmReasoningButton");
 const llmReasoningStatus = document.querySelector("#llmReasoningStatus");
 const llmReasoningOutput = document.querySelector("#llmReasoningOutput");
 const openLlmModel = document.querySelector("#openLlmModel");
+const openAiKeyDialog = document.querySelector("#openAiKeyDialog");
+const openAiKeyInput = document.querySelector("#openAiKeyInput");
+const saveOpenAiKeyButton = document.querySelector("#saveOpenAiKeyButton");
+const cancelOpenAiKeyButton = document.querySelector("#cancelOpenAiKeyButton");
 const ruleList = document.querySelector("#ruleList");
 const beforeFacts = document.querySelector("#beforeFacts");
 const afterFacts = document.querySelector("#afterFacts");
@@ -119,6 +124,7 @@ let activeOntologyName = defaultOntologyName;
 let activeRuleName = defaultRuleName;
 let activeModelNames = "No models loaded";
 let graphMode = "selected";
+let openAiSessionKey = sessionStorage.getItem("sxaiOpenAiKey") || "";
 const graphFilters = {
   robot: true,
   capability: true,
@@ -798,7 +804,7 @@ function renderExplanationQuality() {
     ["SHAP attribution", lastShapResult ? "available" : "optional or unavailable"],
     ["Integrated Gradients attribution", lastIgResult ? "available" : "run IG"],
     ["Permutation Importance", lastPermutationResult ? "available" : "run permutation"],
-    ["OpenAI NL explanation", nlExplanation.textContent && !nlExplanation.textContent.includes("Add your OpenAI API key") ? "available" : "add API key / explain fact"],
+    ["Natural language explanation", lastFactExplanationPayload ? "available" : "choose OpenAI or Ollama"],
   ];
 
   xaiQualityPanel.innerHTML = "<h3>Explanation Quality</h3>";
@@ -965,9 +971,6 @@ function activateExplanationTab(tabId) {
   }
   if (tabId === "sparqlTab") {
     refreshQueryViewer();
-  }
-  if (tabId === "llmReasoningTab" && lastFactExplanationPayload) {
-    renderLlmReasoning(lastFactExplanationPayload);
   }
   if (tabId === "nnXaiTab") {
     renderXaiStability();
@@ -1668,34 +1671,21 @@ async function refreshFacts(target = "after") {
   }
 }
 
-async function explainFact(fact) {
-  try {
-    selectedFact = fact;
-    renderGraph(fact);
-    renderSelectedFactXai(fact);
-    nlExplanation.textContent = "Explaining...";
-
-    const payload = await postJson(factExplainUrl, {
-      store_name: datastoreInput.value.trim() || "S-XAI",
-      fact_query: makeFactSyntax(fact),
-      explanation_type: "shortest",
-    });
-
-    const explanation =
-      payload?.data?.additionalExplanation ||
-      payload?.data?.originalResponse?.additionalExplanation ||
-      payload?.message ||
-      "No natural language explanation returned.";
-
-    nlExplanation.textContent = explanation;
-    llmReasoningStatus.textContent = "Selected fact is ready. Use Generate Open LLM in the LLM Reasoning tab.";
-    llmReasoningOutput.innerHTML = "";
-    lastFactExplanationPayload = null;
-    renderExplanationQuality();
-  } catch (error) {
-    nlExplanation.textContent = error.message;
-    renderExplanationQuality();
-  }
+function explainFact(fact) {
+  selectedFact = fact;
+  renderGraph(fact);
+  renderSelectedFactXai(fact);
+  const context = makeSelectedFactContext(fact);
+  nlExplanation.textContent = [
+    `Selected fact: ${context.factText}`,
+    "",
+    "Choose OpenAI or Ollama to generate the natural language explanation.",
+  ].join("\n");
+  llmReasoningStatus.textContent = "Selected fact is ready. Choose OpenAI or Ollama.";
+  llmReasoningOutput.innerHTML = "";
+  lastFactExplanationPayload = null;
+  activateExplanationTab("nlTab");
+  renderExplanationQuality();
 }
 
 function limeCapabilityToText(robotExplanation, capability, robot) {
@@ -1844,11 +1834,12 @@ function renderLlmReasoning(payload) {
 
   const explanationCard = document.createElement("article");
   explanationCard.className = "llm-card wide";
-  explanationCard.innerHTML = `<h3>Open Local LLM Explanation From RDFox JSON</h3><p class="llm-meta">${provider} model: ${model}</p>`;
+  explanationCard.innerHTML = `<h3>Natural Language Explanation</h3><p class="llm-meta">${provider} model: ${model}</p>`;
   const explanation = document.createElement("pre");
   explanation.textContent = additionalExplanation;
   explanationCard.appendChild(explanation);
   llmReasoningOutput.appendChild(explanationCard);
+  nlExplanation.textContent = additionalExplanation;
 
   const jsonCard = document.createElement("details");
   jsonCard.className = "llm-json";
@@ -1861,6 +1852,99 @@ function renderLlmReasoning(payload) {
   llmReasoningOutput.appendChild(jsonCard);
 }
 
+function requestOpenAiKey() {
+  if (openAiSessionKey) {
+    return Promise.resolve(openAiSessionKey);
+  }
+
+  openAiKeyInput.value = "";
+  openAiKeyDialog.showModal();
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      saveOpenAiKeyButton.removeEventListener("click", save);
+      cancelOpenAiKeyButton.removeEventListener("click", cancel);
+      openAiKeyDialog.removeEventListener("cancel", cancel);
+    };
+    const save = () => {
+      const key = openAiKeyInput.value.trim();
+      cleanup();
+      openAiKeyDialog.close();
+      if (key) {
+        openAiSessionKey = key;
+        sessionStorage.setItem("sxaiOpenAiKey", key);
+      }
+      resolve(key);
+    };
+    const cancel = () => {
+      cleanup();
+      openAiKeyDialog.close();
+      resolve("");
+    };
+
+    saveOpenAiKeyButton.addEventListener("click", save);
+    cancelOpenAiKeyButton.addEventListener("click", cancel);
+    openAiKeyDialog.addEventListener("cancel", cancel);
+  });
+}
+
+async function generateOpenAiExplanation() {
+  if (!selectedFact) {
+    llmReasoningStatus.textContent = "Select a reasoned fact first from the Reasoned Facts tab.";
+    return;
+  }
+
+  const apiKey = await requestOpenAiKey();
+  if (!apiKey) {
+    llmReasoningStatus.textContent = "OpenAI key was not provided. Choose Ollama or paste an OpenAI key.";
+    return;
+  }
+
+  try {
+    generateOpenAiExplanationButton.disabled = true;
+    generateOpenAiExplanationButton.textContent = "Generating...";
+    llmReasoningStatus.textContent = "Asking OpenAI to explain the selected RDFox/Datalog fact...";
+
+    const payload = await postJson(factExplainUrl, {
+      store_name: datastoreInput.value.trim() || "S-XAI",
+      fact_query: makeFactSyntax(selectedFact),
+      explanation_type: "shortest",
+      openai_api_key: apiKey,
+    }, openLlmRequestTimeoutMs);
+
+    const normalizedPayload = {
+      code: 202,
+      status: true,
+      message: payload?.message || "OpenAI explanation generated successfully.",
+      data: {
+        originalResponse: payload?.data?.originalResponse || null,
+        additionalExplanation:
+          payload?.data?.additionalExplanation ||
+          payload?.data?.originalResponse?.additionalExplanation ||
+          payload?.message ||
+          "No OpenAI explanation returned.",
+        provider: "OpenAI",
+        model: "configured chat model",
+      },
+    };
+
+    lastFactExplanationPayload = normalizedPayload;
+    renderLlmReasoning(normalizedPayload);
+    llmReasoningStatus.textContent = "OpenAI natural language explanation generated.";
+    appendRuleLog("OpenAI natural language explanation generated for selected fact.");
+  } catch (error) {
+    if (error.message.toLowerCase().includes("api key") || error.message.toLowerCase().includes("401")) {
+      openAiSessionKey = "";
+      sessionStorage.removeItem("sxaiOpenAiKey");
+    }
+    llmReasoningStatus.textContent = error.message;
+    appendRuleLog(`OpenAI natural language explanation failed: ${error.message}`);
+  } finally {
+    generateOpenAiExplanationButton.disabled = false;
+    generateOpenAiExplanationButton.textContent = "Use OpenAI";
+  }
+}
+
 async function generateLlmReasoning() {
   if (!selectedFact) {
     llmReasoningStatus.textContent = "Select a reasoned fact first from the Reasoned Facts tab.";
@@ -1870,7 +1954,7 @@ async function generateLlmReasoning() {
   try {
     generateLlmReasoningButton.disabled = true;
     generateLlmReasoningButton.textContent = "Generating...";
-    llmReasoningStatus.textContent = "Fetching raw RDFox JSON, then asking the local open LLM...";
+    llmReasoningStatus.textContent = "Fetching raw RDFox JSON, then asking Ollama...";
 
     const rawPayload = await postJson(factExplainRawUrl, {
       store_name: datastoreInput.value.trim() || "S-XAI",
@@ -1880,7 +1964,7 @@ async function generateLlmReasoning() {
 
     const context = makeSelectedFactContext();
     const model = openLlmModel?.value?.trim() || "llama3.2:3b";
-    llmReasoningStatus.textContent = `RDFox JSON received. Asking local ${model} model through Ollama...`;
+    llmReasoningStatus.textContent = `RDFox JSON received. Asking Ollama model ${model}...`;
     const openPayload = await postJson(openLlmReasoningUrl, {
       model,
       selected_fact: context.factText,
@@ -1906,18 +1990,18 @@ async function generateLlmReasoning() {
 
     lastFactExplanationPayload = payload;
     renderLlmReasoning(payload);
-    llmReasoningStatus.textContent = `Open local LLM explanation generated with ${payload.data.provider} model ${payload.data.model}.`;
-    appendRuleLog(`Open local LLM reasoning-change explanation generated with ${payload.data.model}.`);
+    llmReasoningStatus.textContent = `Ollama natural language explanation generated with model ${payload.data.model}.`;
+    appendRuleLog(`Ollama natural language explanation generated with ${payload.data.model}.`);
   } catch (error) {
     if (error.message.includes("404") && error.message.includes("Not Found")) {
       llmReasoningStatus.textContent = "The running .NET API does not expose FactExplainRaw yet. Restart the project so the new backend build is loaded.";
     } else {
       llmReasoningStatus.textContent = error.message;
     }
-    appendRuleLog(`Open local LLM reasoning explanation failed: ${error.message}`);
+    appendRuleLog(`Ollama natural language explanation failed: ${error.message}`);
   } finally {
     generateLlmReasoningButton.disabled = false;
-    generateLlmReasoningButton.textContent = "Generate Open LLM";
+    generateLlmReasoningButton.textContent = "Use Ollama";
   }
 }
 
@@ -2304,7 +2388,8 @@ async function executePrediction() {
     selectedFact = null;
     lastFactExplanationPayload = null;
     llmReasoningOutput.innerHTML = "";
-    llmReasoningStatus.textContent = "Select a reasoned fact, then generate the open local LLM explanation.";
+    nlExplanation.textContent = "Select a fact and click Explain.";
+    llmReasoningStatus.textContent = "Select a reasoned fact, then choose OpenAI or Ollama.";
     resetNnXaiPanels();
     lastResult.model_outputs.forEach((result) => {
       result.source = "NN Model prediction";
@@ -2391,6 +2476,7 @@ applySimulationButton.addEventListener("click", applySimulationValues);
 submitButton.addEventListener("click", submitOntologyUpdate);
 refreshFactsButton.addEventListener("click", () => refreshFacts("after"));
 exportReportButton.addEventListener("click", exportReport);
+generateOpenAiExplanationButton.addEventListener("click", generateOpenAiExplanation);
 generateLlmReasoningButton.addEventListener("click", generateLlmReasoning);
 refreshLimeButton.addEventListener("click", runLimeExplanation);
 refreshShapButton.addEventListener("click", runShapExplanation);

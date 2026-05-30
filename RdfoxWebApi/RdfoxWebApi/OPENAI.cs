@@ -58,10 +58,18 @@ public class OpenAIClient
 
     public async Task<string> GetExplanationAsync(string prompt)
     {
-        if (!_enabled)
+        return await GetExplanationAsync(prompt, null);
+    }
+
+    public async Task<string> GetExplanationAsync(string prompt, string? apiKeyOverride)
+    {
+        var hasOverrideKey = !string.IsNullOrWhiteSpace(apiKeyOverride);
+        if (!_enabled && !hasOverrideKey)
         {
-            return "To get natural language explanations, add your OpenAI API key as OPENAI_API_KEY and restart the .NET API. RDFox facts and graph view are still available without it.";
+            return "Choose OpenAI and paste your OpenAI API key, or choose Ollama for local natural language explanations. RDFox facts and graph view are still available without an OpenAI key.";
         }
+
+        var api = hasOverrideKey ? new OpenAIAPI(apiKeyOverride) : _api;
 
         // Load context from file
         var messages = LoadContext();
@@ -78,7 +86,7 @@ public class OpenAIClient
             Messages = messages // Directly use the loaded context with the user's message added
         };
 
-        var result = await _api.Chat.CreateChatCompletionAsync(chatRequest);
+        var result = await api.Chat.CreateChatCompletionAsync(chatRequest);
         var responseMessage = result.Choices.FirstOrDefault()?.Message.TextContent?.Trim() ?? string.Empty;
 
         return responseMessage;

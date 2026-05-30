@@ -170,16 +170,15 @@ namespace RdfoxWebApi.Controllers
 
                 string initialPrompt = $@"You are explaining an S-XAI robot suitability result for manufacturing.
 
-Use only the RDFox explanation JSON below. Explain:
-1. Which fact was selected.
-2. Which RDF/Datalog reasoning path supports it.
-3. Which robot capability measurement changed or mattered.
-4. How this reasoning can be understood by a human user.
-5. Do not invent facts, robots, coordinates, or measurements that are not present in the JSON.
+Use only the RDFox explanation JSON below.
+Write a short natural language explanation for a human manufacturing user.
+Mention the selected robot fact, the operational repeatability or precision value used by the rule, and why the Datalog/RDFox rule supports the result.
+Do not explain JSON, prefixes, or RDF syntax.
+Do not invent facts, robots, coordinates, or measurements that are not present in the JSON.
 
 RDFox explanation JSON:
 {explanationJson}";
-                 string additionalExplanation = await _openAIClient.GetExplanationAsync(initialPrompt);
+                 string additionalExplanation = await _openAIClient.GetExplanationAsync(initialPrompt, queryFact.openai_api_key);
               // string additionalExplanation = "additionalExplanation";
 
                 var responseObject = new
@@ -1036,6 +1035,7 @@ RDFox explanation JSON:
             public string store_name { get; set; }
             public string fact_query { get; set; }
             public string explanation_type { get; set; }
+            public string? openai_api_key { get; set; }
 
         }
 

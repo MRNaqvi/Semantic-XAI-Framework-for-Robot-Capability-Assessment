@@ -7,12 +7,11 @@ This project runs a robot operational capability workflow:
 - Predicted or simulated capability values are written to the RDFox knowledge graph as `RCO:has_Measurement_Value`.
 - RDFox 7.5b stores the ontology, Datalog rules, and facts.
 - LIME and SHAP provide local NN XAI feature influence for `X`, `Y`, and `Z`.
-- Natural language explanations are optional and require the user's own OpenAI API key.
-- The LLM Reasoning tab can use a free local open model through Ollama, so it does not require an OpenAI key.
+- Natural language explanations can use either the user's own OpenAI API key or a free local Ollama model.
 
 ## Version Note
 
-This S-XAI demo version includes Natural Language explanations. To enable them, copy `config.template.ps1` to `config.local.ps1`, add your OpenAI API key as `$env:OPENAI_API_KEY`, and restart the application. Without the key, model prediction, KG updates, facts, and graph explanations still work.
+This S-XAI demo version includes Natural Language explanations. In the Natural Language tab, choose `Use OpenAI` and paste your OpenAI API key for the current browser session, or choose `Use Ollama` to run a local open model. Without either provider, model prediction, KG updates, facts, and graph explanations still work.
 
 ## Requirements
 
@@ -21,7 +20,7 @@ This S-XAI demo version includes Natural Language explanations. To enable them, 
 - .NET SDK 8 or newer
 - RDFox 7.5b license file
 - Optional: OpenAI API key for natural language explanations
-- Optional: Ollama for free local open-model reasoning in the LLM Reasoning tab
+- Optional: Ollama for free local open-model reasoning in the Natural Language tab
 - Python packages from `App\requirements.txt`, including TensorFlow, LIME, and SHAP
 
 RDFox 7.5b runtime files are included under:
@@ -104,13 +103,13 @@ or set it in `config.local.ps1`:
 $env:RDFOX_LICENSE_FILE = "C:\Path\To\RDFox.lic"
 ```
 
-For Natural Language explanations, add your OpenAI key to `config.local.ps1`:
+For persistent Natural Language explanations with OpenAI, add your OpenAI key to `config.local.ps1`:
 
 ```powershell
 $env:OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
 ```
 
-For the LLM Reasoning tab without OpenAI, install Ollama and pull a local model:
+For the Natural Language tab without OpenAI, install Ollama and pull a local model:
 
 ```powershell
 ollama pull llama3.2:3b
@@ -191,9 +190,9 @@ powershell -ExecutionPolicy Bypass -File ".\Start-Web.ps1"
 6. Click `Submit` to update `RCO:has_Measurement_Value` in the knowledge graph.
 7. Use `Refresh Facts`, `View Graph`, and `Explain`.
 
-Natural language explanation requires `OPENAI_API_KEY`. Without it, facts and graph view still work.
+Natural language explanation can use either an OpenAI key pasted in the UI or Ollama running locally. Without either provider, facts and graph view still work.
 
-The separate `LLM Reasoning` tab can use Ollama with a free local open model. This tab reads raw RDFox explanation JSON and sends it to the local model through Flask; it does not call OpenAI.
+The `Natural Language` tab can also use Ollama with a free local open model. It reads RDFox explanation evidence and sends a compact reasoning summary to the local model through Flask; it does not call OpenAI.
 
 ## Custom Inputs
 
