@@ -534,13 +534,13 @@ def build_rule_based_llm_draft(payload, evidence):
 
     if "Repeatability" in fact_name:
         rule_reason = (
-            "the Datalog rule checks the robot repeatability measurement and RDFox confirms it equals "
-            "the minimum repeatability capability value among the compared robots"
+            "applies the Datalog rule for repeatability and identifies this robot "
+            "as the one with the minimum repeatability capability value among the compared robots"
         )
     elif "Precision" in fact_name:
         rule_reason = (
-            "the Datalog rule checks the robot precision measurement and RDFox confirms it equals "
-            "the maximum precision capability value among the compared robots"
+            "applies the Datalog rule for precision and identifies this robot "
+            "as the one with the maximum precision capability value among the compared robots"
         )
     else:
         rule_reason = "RDFox applies the Datalog rule evidence shown for the selected fact"
@@ -551,7 +551,7 @@ def build_rule_based_llm_draft(payload, evidence):
 
     return (
         f"{robot} is selected as {fact_words} because its {value_text}. "
-        f"This follows from RDFox reasoning because {rule_reason}."
+        f"This suitability conclusion is produced by the rule-based decision mechanism, which {rule_reason}."
     )
 
 
@@ -587,6 +587,7 @@ def build_open_llm_prompt(payload):
 Use only the draft and evidence. Do not explain RDF, JSON, prefixes, fields, or data format. Keep exactly two short sentences.
 Domain rule: lower repeatability error is better; higher precision capability is better.
 Do not say "minimum required value"; say "minimum repeatability capability value among the compared robots" when explaining repeatability.
+Do not say RDFox makes or confirms the decision; say the rule-based decision mechanism applies the Datalog rule.
 Mention both repeatability and precision values exactly as they appear in the draft.
 
 Draft explanation:
