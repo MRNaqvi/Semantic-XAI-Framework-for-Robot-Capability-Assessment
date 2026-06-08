@@ -85,7 +85,10 @@
             </div>
           </div>
           <input id="rulesFile" class="native-file-input" type="file" accept=".dlog,.txt">
-          <button id="uploadRulesButton" class="pill small-pill" type="button">Upload Rule</button>
+          <div class="resource-actions">
+            <button id="uploadRulesButton" class="pill small-pill" type="button">Upload Rule</button>
+            <button id="openRuleViewerButton" class="pill small-pill" type="button">Rule Viewer</button>
+          </div>
           <pre id="rulesStatus" class="model-status">Datalog rules: c21.dlog</pre>
         </section>
 
@@ -156,7 +159,6 @@
         <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Simulated / Counterfactual Comparison</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nnXaiTab">XAI</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nlTab">NL Language Explanations</button>
-        <button class="explanation-tab" type="button" data-explanation-tab="rulesTab">Rule Viewer</button>
         <button class="explanation-tab" type="button" data-explanation-tab="sparqlTab">SPARQL</button>
       </div>
 
@@ -403,6 +405,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=20260608-graph-contrast"></script>
+  <script src="app.js?v=20260608-front-rule-viewer"></script>
 </body>
 </html>

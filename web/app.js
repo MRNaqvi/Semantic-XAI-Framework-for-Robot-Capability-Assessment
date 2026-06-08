@@ -95,6 +95,7 @@ const rulesFile = document.querySelector("#rulesFile");
 const uploadOntologyButton = document.querySelector("#uploadOntologyButton");
 const openOntologyViewerButton = document.querySelector("#openOntologyViewerButton");
 const uploadRulesButton = document.querySelector("#uploadRulesButton");
+const openRuleViewerButton = document.querySelector("#openRuleViewerButton");
 const uploadModelsButton = document.querySelector("#uploadModelsButton");
 const ontologyStatus = document.querySelector("#ontologyStatus");
 const rulesStatus = document.querySelector("#rulesStatus");
@@ -2952,6 +2953,10 @@ openOntologyViewerButton.addEventListener("click", () => {
   activateExplanationTab("ontologyTab");
 });
 uploadRulesButton.addEventListener("click", () => rulesFile.click());
+openRuleViewerButton.addEventListener("click", () => {
+  showPage("explanations");
+  activateExplanationTab("rulesTab");
+});
 uploadModelsButton.addEventListener("click", () => modelsFile.click());
 ontologyFile.addEventListener("change", uploadOntologyFromFile);
 rulesFile.addEventListener("change", uploadRulesFromFile);
