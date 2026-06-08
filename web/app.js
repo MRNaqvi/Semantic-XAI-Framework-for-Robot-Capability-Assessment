@@ -1285,6 +1285,39 @@ function renderSvgText(parent, lines, x, y, className, lineHeight = 14) {
   return text;
 }
 
+function renderGraphEdgeLabel(parent, lines, x, y) {
+  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  group.setAttribute("class", "graph-edge-label-group");
+  group.setAttribute("transform", `translate(${x} ${y})`);
+  const background = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  background.setAttribute("class", "graph-edge-label-bg");
+  group.appendChild(background);
+
+  const text = renderSvgText(group, lines, 0, 0, "graph-edge-label", 14);
+  parent.appendChild(group);
+
+  const bbox = text.getBBox();
+  background.setAttribute("x", bbox.x - 9);
+  background.setAttribute("y", bbox.y - 5);
+  background.setAttribute("width", bbox.width + 18);
+  background.setAttribute("height", bbox.height + 10);
+  background.setAttribute("rx", 6);
+  return group;
+}
+
+function positionGraphEdgeLabel(label, x, y) {
+  if (label?.classList?.contains("graph-edge-label-group")) {
+    label.setAttribute("transform", `translate(${x} ${y})`);
+    return;
+  }
+
+  label?.setAttribute("x", x);
+  label?.setAttribute("y", y);
+  label?.querySelectorAll("tspan").forEach((tspan) => {
+    tspan.setAttribute("x", x);
+  });
+}
+
 function updateGraphButtons() {
   selectedGraphButton.classList.toggle("active", graphMode === "selected");
   wholeGraphButton.classList.toggle("active", graphMode === "whole");
@@ -1438,11 +1471,7 @@ function renderGraphCanvas(nodes, edges, traceItems, options = {}) {
       line.setAttribute("x2", b.x);
       line.setAttribute("y2", b.y);
       if (label) {
-        label.setAttribute("x", (a.x + b.x) / 2);
-        label.setAttribute("y", (a.y + b.y) / 2 - 10);
-        label.querySelectorAll("tspan").forEach((tspan) => {
-          tspan.setAttribute("x", (a.x + b.x) / 2);
-        });
+        positionGraphEdgeLabel(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
       }
     });
   }
@@ -1455,12 +1484,11 @@ function renderGraphCanvas(nodes, edges, traceItems, options = {}) {
     factGraph.appendChild(line);
 
     const label = edge.label?.length
-      ? renderSvgText(
+      ? renderGraphEdgeLabel(
           factGraph,
           edge.label,
           (a.x + b.x) / 2,
-          (a.y + b.y) / 2 - 10,
-          "graph-edge-label"
+          (a.y + b.y) / 2 - 10
         )
       : null;
     edgeRefs.push({ edge, line, label });
@@ -1677,11 +1705,7 @@ function renderOntologyCanvas(nodes, edges, options = {}) {
       line.setAttribute("x2", b.x);
       line.setAttribute("y2", b.y);
       if (label) {
-        label.setAttribute("x", (a.x + b.x) / 2);
-        label.setAttribute("y", (a.y + b.y) / 2 - 10);
-        label.querySelectorAll("tspan").forEach((tspan) => {
-          tspan.setAttribute("x", (a.x + b.x) / 2);
-        });
+        positionGraphEdgeLabel(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
       }
     });
   }
@@ -1696,7 +1720,7 @@ function renderOntologyCanvas(nodes, edges, options = {}) {
     line.setAttribute("class", "graph-edge");
     ontologyGraph.appendChild(line);
     const label = edge.label?.length
-      ? renderSvgText(ontologyGraph, edge.label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10, "graph-edge-label")
+      ? renderGraphEdgeLabel(ontologyGraph, edge.label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10)
       : null;
     edgeRefs.push({ edge, line, label });
   });

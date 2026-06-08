@@ -864,24 +864,33 @@ body {
 }
 
 .graph-edge {
-  stroke: #c7c8d6;
-  stroke-width: 3;
-  opacity: 0.72;
+  stroke: #d9deef;
+  stroke-width: 3.4;
+  opacity: 0.82;
+}
+
+.graph-edge-label-group {
+  pointer-events: none;
+}
+
+.graph-edge-label-bg {
+  fill: rgba(12, 18, 31, 0.88);
+  stroke: rgba(127, 210, 255, 0.28);
+  stroke-width: 1;
 }
 
 .graph-edge-label {
-  fill: #ffffff;
+  fill: #f8fbff;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   text-anchor: middle;
-  paint-order: stroke;
-  stroke: var(--field);
-  stroke-width: 4px;
+  dominant-baseline: middle;
+  stroke: none;
 }
 
 .graph-node circle {
   fill: #d9f3fb;
-  stroke: #444b52;
+  stroke: #3f4a54;
   stroke-width: 8;
 }
 
@@ -916,12 +925,14 @@ body {
 
 .graph-node.selected circle {
   fill: #f0a3a1;
+  stroke: #7fd2ff;
+  stroke-width: 10;
 }
 
 .graph-node text {
-  fill: #20232c;
+  fill: #101827;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   text-anchor: middle;
   dominant-baseline: middle;
   pointer-events: none;
