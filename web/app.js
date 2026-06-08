@@ -91,6 +91,7 @@ const tabPanels = Array.from(document.querySelectorAll(".tab-panel"));
 const ontologyFile = document.querySelector("#ontologyFile");
 const rulesFile = document.querySelector("#rulesFile");
 const uploadOntologyButton = document.querySelector("#uploadOntologyButton");
+const openOntologyViewerButton = document.querySelector("#openOntologyViewerButton");
 const uploadRulesButton = document.querySelector("#uploadRulesButton");
 const uploadModelsButton = document.querySelector("#uploadModelsButton");
 const ontologyStatus = document.querySelector("#ontologyStatus");
@@ -106,6 +107,11 @@ const exportPngButton = document.querySelector("#exportPngButton");
 const graphFiltersPanel = document.querySelector("#graphFilters");
 const graphFilterInputs = Array.from(document.querySelectorAll("[data-graph-filter]"));
 const selectedRobotOnlyFilter = document.querySelector("#selectedRobotOnlyFilter");
+const refreshOntologyButton = document.querySelector("#refreshOntologyButton");
+const ontologyGraph = document.querySelector("#ontologyGraph");
+const ontologyDetails = document.querySelector("#ontologyDetails");
+const ontologyViewerStatus = document.querySelector("#ontologyViewerStatus");
+const ontologyFilterInputs = Array.from(document.querySelectorAll("[data-ontology-filter]"));
 
 let lastResult = null;
 let lastCoordinates = [];
@@ -125,12 +131,19 @@ let activeRuleName = defaultRuleName;
 let activeModelNames = "No models loaded";
 let graphMode = "selected";
 let openAiSessionKey = sessionStorage.getItem("sxaiOpenAiKey") || "";
+let ontologyTriples = [];
 const graphFilters = {
   robot: true,
   capability: true,
   value: true,
   fact: true,
   selectedRobotOnly: false,
+};
+const ontologyFilters = {
+  class: true,
+  subclass: true,
+  instance: true,
+  property: true,
 };
 
 function renderAssetStatus(errors = "") {
@@ -139,6 +152,19 @@ function renderAssetStatus(errors = "") {
   modelStatus.textContent = errors
     ? `Keras models loaded: ${activeModelNames}\nErrors:\n${errors}`
     : `Keras models loaded: ${activeModelNames}`;
+}
+
+function resetOntologyViewer(message = "Load the ontology graph to inspect classes, subclasses, instances, and properties.") {
+  ontologyTriples = [];
+  if (ontologyGraph) {
+    ontologyGraph.innerHTML = "";
+  }
+  if (ontologyDetails) {
+    ontologyDetails.innerHTML = "<h3>Ontology Node Details</h3><p>Click an ontology node to inspect its connected predicates.</p>";
+  }
+  if (ontologyViewerStatus) {
+    ontologyViewerStatus.textContent = message;
+  }
 }
 
 function showPage(pageName) {
@@ -266,7 +292,11 @@ function shortName(value) {
   return String(value || "")
     .replace(/^RCO:/, "")
     .replace(/[<>]/g, "")
-    .replace("http://RCO.enit.fr/", "");
+    .replace("http://RCO.enit.fr/", "")
+    .replace("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "")
+    .replace("http://www.w3.org/2000/01/rdf-schema#", "")
+    .replace("http://www.w3.org/2002/07/owl#", "")
+    .replace("http://www.w3.org/2001/XMLSchema#", "");
 }
 
 function factsToText(facts) {
@@ -739,6 +769,50 @@ function makeLimeInterpretation(robot, capability, explanation) {
   return `Near this Cartesian task point, ${robot} ${capabilityName(capability)} is most sensitive to ${strongest}. ${strongest} ${explainInfluenceDirection(strongestWeight, capability)}`;
 }
 
+function factKey(fact) {
+  return fact ? `${fact.robot}||${fact.type}` : "";
+}
+
+function factDisplayText(fact) {
+  return `${shortName(fact.robot)} rdf:type ${shortName(fact.type)}`;
+}
+
+function findFactByKey(key) {
+  return lastFacts.find((fact) => factKey(fact) === key) || null;
+}
+
+function renderSelectedFactPicker(fact) {
+  const field = document.createElement("label");
+  field.className = "selected-fact-picker";
+  const caption = document.createElement("span");
+  caption.textContent = "Reasoned fact";
+  const select = document.createElement("select");
+  select.disabled = !lastFacts.length;
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = lastFacts.length ? "Choose a reasoned fact" : "No reasoned facts loaded";
+  select.appendChild(placeholder);
+
+  lastFacts.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = factKey(item);
+    option.textContent = factDisplayText(item);
+    select.appendChild(option);
+  });
+
+  select.value = factKey(fact);
+  select.addEventListener("change", () => {
+    const selected = findFactByKey(select.value);
+    if (selected) {
+      selectReasonedFact(selected);
+    }
+  });
+
+  field.append(caption, select);
+  return field;
+}
+
 function getInfluenceStability(explanation) {
   const rows = makeInfluenceRows(explanation);
   const strongest = rows[0] || { feature: "X", weight: 0 };
@@ -871,6 +945,7 @@ function renderSelectedFactXai(fact = selectedFact) {
   const heading = document.createElement("h3");
   heading.textContent = "Selected Fact NN Contribution";
   selectedFactXai.appendChild(heading);
+  selectedFactXai.appendChild(renderSelectedFactPicker(fact));
 
   if (!fact) {
     const message = document.createElement("p");
@@ -946,6 +1021,14 @@ function renderSelectedFactXai(fact = selectedFact) {
   renderExplanationQuality();
 }
 
+function selectReasonedFact(fact, options = {}) {
+  selectedFact = fact || null;
+  if (options.updateGraph !== false) {
+    renderGraph(selectedFact);
+  }
+  renderSelectedFactXai(selectedFact);
+}
+
 function refreshFileName(input) {
   const label = document.querySelector(`.file-name[data-for="${input.id}"]`);
   if (!label) {
@@ -971,6 +1054,9 @@ function activateExplanationTab(tabId) {
   }
   if (tabId === "sparqlTab") {
     refreshQueryViewer();
+  }
+  if (tabId === "ontologyTab" && !ontologyTriples.length) {
+    loadOntologyGraph();
   }
   if (tabId === "nnXaiTab") {
     renderXaiStability();
@@ -1005,6 +1091,7 @@ async function uploadOntologyFromFile() {
     await uploadOntologyText(text, "Custom ontology uploaded.");
     activeOntologyName = fileName;
     renderAssetStatus();
+    resetOntologyViewer(`${fileName} uploaded. Open Ontology Viewer to inspect it.`);
     appendRuleLog(`Ontology uploaded: ${fileName}.`);
   } catch (error) {
     statusText.textContent = error.message;
@@ -1101,7 +1188,9 @@ function renderFacts(facts) {
 
   if (!facts.length) {
     factsList.textContent = "No facts found. Load ontology/rules, submit capabilities, then refresh.";
+    selectedFact = null;
     renderGraph(null);
+    renderSelectedFactXai();
     return;
   }
 
@@ -1130,11 +1219,7 @@ function renderFacts(facts) {
       graphButton.type = "button";
       graphButton.textContent = "View Graph";
       graphButton.addEventListener("click", () => {
-        selectedFact = fact;
-        graphMode = "selected";
-        updateGraphButtons();
-        renderGraph(fact);
-        renderSelectedFactXai(fact);
+        selectReasonedFact(fact);
         activateExplanationTab("graphTab");
       });
 
@@ -1271,6 +1356,9 @@ function humanizeKind(kind = "default") {
     value: "Measurement value",
     simulated: "User simulated measurement value",
     fact: "Reasoned fact",
+    class: "Ontology class",
+    instance: "Ontology instance",
+    property: "Ontology property",
   }[kind] || "Graph node";
 }
 
@@ -1439,6 +1527,290 @@ function renderGraphCanvas(nodes, edges, traceItems, options = {}) {
 
   updateEdges();
   renderTrace(traceItems);
+}
+
+function makeOntologyQuery() {
+  return `PREFIX RCO: <http://RCO.enit.fr/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?s ?p ?o WHERE {
+  ?s ?p ?o .
+  FILTER(
+    STRSTARTS(STR(?s), "http://RCO.enit.fr/") ||
+    STRSTARTS(STR(?o), "http://RCO.enit.fr/") ||
+    ?p = rdf:type ||
+    ?p = rdfs:subClassOf ||
+    ?p = rdfs:domain ||
+    ?p = rdfs:range
+  )
+}
+LIMIT 260`;
+}
+
+function updateOntologyFilters() {
+  ontologyFilterInputs.forEach((input) => {
+    ontologyFilters[input.dataset.ontologyFilter] = input.checked;
+  });
+}
+
+function ontologyTripleCategory(triple) {
+  const predicate = shortName(triple.p);
+  const object = shortName(triple.o);
+  if (predicate === "subClassOf") {
+    return "subclass";
+  }
+  if (predicate === "type" && ["Class", "ObjectProperty", "DatatypeProperty", "AnnotationProperty", "Property"].some((name) => object.includes(name))) {
+    return object.includes("Property") ? "property" : "class";
+  }
+  if (predicate === "type") {
+    return "instance";
+  }
+  if (["domain", "range", "hasCapability", "has_Measurement_Value"].includes(predicate) || predicate.startsWith("has")) {
+    return "property";
+  }
+  return "property";
+}
+
+function ontologyNodeKind(value, triples) {
+  const incomingType = triples.find((triple) => triple.s === value && shortName(triple.p) === "type");
+  const objectName = shortName(incomingType?.o || "");
+  if (["Class"].some((name) => objectName.includes(name))) {
+    return "class";
+  }
+  if (objectName.includes("Property")) {
+    return "property";
+  }
+  if (triples.some((triple) => (triple.s === value || triple.o === value) && shortName(triple.p) === "subClassOf")) {
+    return "class";
+  }
+  return "instance";
+}
+
+function shouldShowOntologyTriple(triple) {
+  return ontologyFilters[ontologyTripleCategory(triple)];
+}
+
+function renderOntologyDetails(node, edges, nodeMap) {
+  const cleanLabel = node.label.replace(/\n/g, " ");
+  const connected = edges
+    .filter((edge) => edge.from === node.id || edge.to === node.id)
+    .map((edge) => {
+      const predicate = edge.label?.join(" ") || "related to";
+      const otherId = edge.from === node.id ? edge.to : edge.from;
+      const other = nodeMap.get(otherId);
+      const direction = edge.from === node.id ? "outgoing" : "incoming";
+      return `${direction}: ${predicate} ${edge.from === node.id ? "->" : "<-"} ${other?.label.replace(/\n/g, " ") || otherId}`;
+    });
+
+  ontologyDetails.innerHTML = "";
+  const title = document.createElement("h3");
+  title.textContent = cleanLabel;
+  ontologyDetails.appendChild(title);
+
+  const meta = document.createElement("dl");
+  [
+    ["Node type", humanizeKind(node.kind)],
+    ["Identifier", node.raw || node.id],
+  ].forEach(([term, description]) => {
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = description;
+    meta.append(dt, dd);
+  });
+  ontologyDetails.appendChild(meta);
+
+  const relatedTitle = document.createElement("h4");
+  relatedTitle.textContent = "Connected ontology predicates";
+  ontologyDetails.appendChild(relatedTitle);
+  const list = document.createElement("ul");
+  (connected.length ? connected : ["No connected predicates in the current filtered view."]).forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    list.appendChild(li);
+  });
+  ontologyDetails.appendChild(list);
+}
+
+function ontologySvgPointFromEvent(event) {
+  const point = ontologyGraph.createSVGPoint();
+  point.x = event.clientX;
+  point.y = event.clientY;
+  return point.matrixTransform(ontologyGraph.getScreenCTM().inverse());
+}
+
+function renderOntologyCanvas(nodes, edges, options = {}) {
+  const graphWidth = options.width || 1280;
+  const graphHeight = options.height || 560;
+  ontologyGraph.setAttribute("viewBox", `0 0 ${graphWidth} ${graphHeight}`);
+  ontologyGraph.style.minHeight = `${graphHeight}px`;
+  ontologyGraph.innerHTML = "";
+  ontologyDetails.innerHTML = "<h3>Ontology Node Details</h3><p>Click an ontology node to inspect its connected predicates.</p>";
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const edgeRefs = [];
+
+  function updateEdges() {
+    edgeRefs.forEach(({ edge, line, label }) => {
+      const a = nodeMap.get(edge.from);
+      const b = nodeMap.get(edge.to);
+      if (!a || !b) {
+        return;
+      }
+      line.setAttribute("x1", a.x);
+      line.setAttribute("y1", a.y);
+      line.setAttribute("x2", b.x);
+      line.setAttribute("y2", b.y);
+      if (label) {
+        label.setAttribute("x", (a.x + b.x) / 2);
+        label.setAttribute("y", (a.y + b.y) / 2 - 10);
+        label.querySelectorAll("tspan").forEach((tspan) => {
+          tspan.setAttribute("x", (a.x + b.x) / 2);
+        });
+      }
+    });
+  }
+
+  edges.forEach((edge) => {
+    const a = nodeMap.get(edge.from);
+    const b = nodeMap.get(edge.to);
+    if (!a || !b) {
+      return;
+    }
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("class", "graph-edge");
+    ontologyGraph.appendChild(line);
+    const label = edge.label?.length
+      ? renderSvgText(ontologyGraph, edge.label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10, "graph-edge-label")
+      : null;
+    edgeRefs.push({ edge, line, label });
+  });
+
+  nodes.forEach((node) => {
+    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.setAttribute("class", `graph-node ${node.kind || "default"}`);
+    group.setAttribute("transform", `translate(${node.x} ${node.y})`);
+    group.setAttribute("tabindex", "0");
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", 0);
+    circle.setAttribute("cy", 0);
+    circle.setAttribute("r", node.radius || "42");
+    group.appendChild(circle);
+    node.label.split("\n").forEach((lineText, index, lines) => {
+      renderSvgText(group, [lineText], 0, (index - (lines.length - 1) / 2) * 16, "graph-node-label", 16);
+    });
+
+    let offset = null;
+    let moved = false;
+    group.addEventListener("pointerdown", (event) => {
+      const point = ontologySvgPointFromEvent(event);
+      offset = { x: point.x - node.x, y: point.y - node.y };
+      moved = false;
+      group.setPointerCapture(event.pointerId);
+    });
+    group.addEventListener("pointermove", (event) => {
+      if (!offset) {
+        return;
+      }
+      const point = ontologySvgPointFromEvent(event);
+      node.x = Math.max(50, Math.min(graphWidth - 50, point.x - offset.x));
+      node.y = Math.max(55, Math.min(graphHeight - 55, point.y - offset.y));
+      moved = true;
+      group.setAttribute("transform", `translate(${node.x} ${node.y})`);
+      updateEdges();
+    });
+    group.addEventListener("pointerup", () => {
+      if (!moved) {
+        renderOntologyDetails(node, edges, nodeMap);
+      }
+      offset = null;
+    });
+    group.addEventListener("pointercancel", () => {
+      offset = null;
+    });
+    ontologyGraph.appendChild(group);
+  });
+  updateEdges();
+}
+
+function renderOntologyGraph() {
+  updateOntologyFilters();
+  const visibleTriples = ontologyTriples.filter(shouldShowOntologyTriple);
+  if (!visibleTriples.length) {
+    ontologyGraph.innerHTML = "";
+    ontologyViewerStatus.textContent = ontologyTriples.length
+      ? "No ontology triples match the current filters."
+      : "Load the ontology graph to inspect classes, subclasses, instances, and properties.";
+    return;
+  }
+
+  const nodeValues = Array.from(new Set(visibleTriples.flatMap((triple) => [triple.s, triple.o]).filter((value) => value && !value.startsWith("\""))));
+  const nodesByValue = new Map();
+  const columns = {
+    class: { x: 210, count: 0 },
+    instance: { x: 610, count: 0 },
+    property: { x: 1010, count: 0 },
+  };
+  nodeValues.slice(0, 85).forEach((value, index) => {
+    const kind = ontologyNodeKind(value, ontologyTriples);
+    const column = columns[kind] || columns.instance;
+    const y = 80 + column.count * 92;
+    column.count += 1;
+    nodesByValue.set(value, {
+      id: `ontology-${index}`,
+      raw: value,
+      label: wrapOntologyName(shortName(value)),
+      x: column.x,
+      y,
+      kind,
+      radius: kind === "property" ? 36 : 42,
+    });
+  });
+
+  const edges = [];
+  visibleTriples.forEach((triple) => {
+    const from = nodesByValue.get(triple.s);
+    const to = nodesByValue.get(triple.o);
+    if (!from || !to || from.id === to.id) {
+      return;
+    }
+    edges.push({
+      from: from.id,
+      to: to.id,
+      label: [wrapGraphLabel(shortName(triple.p), 22)],
+    });
+  });
+
+  const nodes = Array.from(nodesByValue.values());
+  const maxColumnCount = Math.max(...Object.values(columns).map((column) => column.count), 1);
+  const graphHeight = Math.max(560, 120 + maxColumnCount * 92);
+  ontologyViewerStatus.textContent = `Showing ${nodes.length} ontology node(s) and ${edges.length} predicate edge(s).`;
+  renderOntologyCanvas(nodes, edges, { height: graphHeight });
+}
+
+async function loadOntologyGraph() {
+  try {
+    refreshOntologyButton.disabled = true;
+    refreshOntologyButton.textContent = "Loading...";
+    ontologyViewerStatus.textContent = "Querying RDFox ontology triples...";
+    const payload = await postJson(selectUrl, {
+      store_name: datastoreInput.value.trim() || "S-XAI",
+      p_query: encodeURIComponent(makeOntologyQuery()),
+    });
+    const rows = payload?.data?.queryResult || [];
+    ontologyTriples = rows
+      .map((row) => ({ s: row.word1, p: row.word2, o: row.word3 }))
+      .filter((triple) => triple.s && triple.p && triple.o);
+    renderOntologyGraph();
+    appendRuleLog(`Ontology viewer loaded ${ontologyTriples.length} triple(s).`);
+  } catch (error) {
+    ontologyViewerStatus.textContent = error.message;
+    appendRuleLog(`Ontology viewer failed: ${error.message}`);
+  } finally {
+    refreshOntologyButton.disabled = false;
+    refreshOntologyButton.textContent = "Load Ontology";
+  }
 }
 
 function renderGraph(fact) {
@@ -1672,9 +2044,7 @@ async function refreshFacts(target = "after") {
 }
 
 function explainFact(fact) {
-  selectedFact = fact;
-  renderGraph(fact);
-  renderSelectedFactXai(fact);
+  selectReasonedFact(fact);
   const context = makeSelectedFactContext(fact);
   nlExplanation.textContent = [
     `Selected fact: ${context.factText}`,
@@ -2311,6 +2681,7 @@ async function uploadKnowledgeBase() {
     activeOntologyName = defaultOntologyName;
     activeRuleName = defaultRuleName;
     renderAssetStatus();
+    resetOntologyViewer("Default ontology reloaded. Open Ontology Viewer to inspect it.");
     statusText.textContent = "";
     appendRuleLog(`Default S-XAI ontology (${defaultOntologyName}) and Datalog rules (${defaultRuleName}) reloaded.`);
   } catch (error) {
@@ -2486,6 +2857,7 @@ selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
 wholeGraphButton.addEventListener("click", renderWholeGraph);
 exportSvgButton.addEventListener("click", exportGraphSvg);
 exportPngButton.addEventListener("click", exportGraphPng);
+refreshOntologyButton.addEventListener("click", loadOntologyGraph);
 graphFilterInputs.forEach((input) => {
   input.addEventListener("change", () => {
     updateGraphFilters();
@@ -2500,9 +2872,16 @@ selectedRobotOnlyFilter.addEventListener("change", () => {
     renderWholeGraph();
   }
 });
+ontologyFilterInputs.forEach((input) => {
+  input.addEventListener("change", renderOntologyGraph);
+});
 cancelButton.addEventListener("click", closeDialog);
 okButton.addEventListener("click", closeDialog);
 uploadOntologyButton.addEventListener("click", () => ontologyFile.click());
+openOntologyViewerButton.addEventListener("click", () => {
+  showPage("explanations");
+  activateExplanationTab("ontologyTab");
+});
 uploadRulesButton.addEventListener("click", () => rulesFile.click());
 uploadModelsButton.addEventListener("click", () => modelsFile.click());
 ontologyFile.addEventListener("change", uploadOntologyFromFile);

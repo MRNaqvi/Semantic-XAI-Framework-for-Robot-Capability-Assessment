@@ -36,6 +36,30 @@
     </header>
 
     <section class="run-page active" id="runPage">
+      <section class="default-context-panel">
+        <div class="default-datastore-note">
+          <span>Data Store in use: <strong>S-XAI</strong></span>
+          <small>* using default settings</small>
+        </div>
+        <h2>Default Knowledge Assets</h2>
+        <div class="asset-grid">
+          <article>
+            <h3>Robot Capability Ontology</h3>
+            <p>Includes the Robot Capability Ontology.</p>
+            <a href="https://industryportal.enit.fr/ontologies/RCO/" target="_blank" rel="noreferrer">Source: industryportal.enit.fr/ontologies/RCO</a>
+          </article>
+          <article>
+            <h3>Manufacturing Commonsense Knowledge Rules</h3>
+            <p>Manufacturing commonsense driven Datalog rules are loaded for reasoning.</p>
+            <a href="https://csk.chaikmat-anr.uttop.fr" target="_blank" rel="noreferrer">Source: csk.chaikmat-anr.uttop.fr</a>
+          </article>
+          <article>
+            <h3>Neural Network Models</h3>
+            <p>Neural Network models trained on 3 different datasets for Robot Ned-2 Niryo, ABB IRB 1200, and IRB 2400 in Keras.</p>
+          </article>
+        </div>
+      </section>
+
     <section class="setup-panel">
       <div class="resource-upload-grid">
         <section class="resource-card">
@@ -46,7 +70,10 @@
             </div>
           </div>
           <input id="ontologyFile" class="native-file-input" type="file" accept=".ttl,.rdf,.owl,.txt">
-          <button id="uploadOntologyButton" class="pill small-pill" type="button">Upload Ontology</button>
+          <div class="resource-actions">
+            <button id="uploadOntologyButton" class="pill small-pill" type="button">Upload Ontology</button>
+            <button id="openOntologyViewerButton" class="pill small-pill" type="button">Ontology Viewer</button>
+          </div>
           <pre id="ontologyStatus" class="model-status">Ontology: MCSk222.ttl</pre>
         </section>
 
@@ -93,34 +120,6 @@
     </section>
 
     <section class="default-context-panel">
-      <div class="default-datastore-note">
-        <span>Data Store in use: <strong>S-XAI</strong></span>
-        <small>* using default settings</small>
-      </div>
-      <h2>Default Knowledge Assets</h2>
-      <div class="asset-grid">
-        <article>
-          <h3>Robot Capability Ontology</h3>
-          <p>Includes the Robot Capability Ontology.</p>
-          <a href="https://industryportal.enit.fr/ontologies/RCO/" target="_blank" rel="noreferrer">Source: industryportal.enit.fr/ontologies/RCO</a>
-        </article>
-        <article>
-          <h3>Manufacturing Commonsense Knowledge Rules</h3>
-          <p>Manufacturing commonsense driven Datalog rules are loaded for reasoning.</p>
-          <a href="https://csk.chaikmat-anr.uttop.fr" target="_blank" rel="noreferrer">Source: csk.chaikmat-anr.uttop.fr</a>
-        </article>
-        <article>
-          <h3>Neural Network Models</h3>
-          <p>Neural Network models trained on 3 different datasets for Robot Ned-2 Niryo, ABB IRB 1200, and IRB 2400 in Keras.</p>
-        </article>
-      </div>
-
-      <div class="api-key-note">
-        <h3>Natural Language Explanations</h3>
-        <p>OpenAI explanations can use a key pasted in the Natural Language tab. Ollama explanations run locally with the configured open model.</p>
-        <p>For persistent OpenAI configuration, start from <code>config.template.ps1</code>; your local key file is ignored by Git.</p>
-      </div>
-
       <details class="further-reads">
         <summary>Further Reads</summary>
         <ol>
@@ -154,15 +153,16 @@
       <div class="explanation-tabs" role="tablist" aria-label="Explanation views">
         <button class="explanation-tab active" type="button" data-explanation-tab="factsTab">Reasoned Facts</button>
         <button class="explanation-tab" type="button" data-explanation-tab="graphTab">Graph</button>
-        <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Counterfactual</button>
-        <button class="explanation-tab" type="button" data-explanation-tab="nnXaiTab">NN XAI</button>
-        <button class="explanation-tab" type="button" data-explanation-tab="nlTab">Natural Language</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="ontologyTab">Ontology Viewer</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Simulated / Counterfactual Comparison</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="nnXaiTab">XAI</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="nlTab">NL Language Explanations</button>
         <button class="explanation-tab" type="button" data-explanation-tab="rulesTab">Rules</button>
         <button class="explanation-tab" type="button" data-explanation-tab="sparqlTab">SPARQL</button>
       </div>
 
       <section class="explanation-panel" id="counterfactualTab" hidden>
-        <h2>Counterfactual Comparison</h2>
+        <h2>Simulated / Counterfactual Comparison</h2>
         <div class="comparison-grid">
           <div>
             <h3>Before Simulation</h3>
@@ -217,9 +217,36 @@
         <div id="tracePanel" class="trace-panel"></div>
       </section>
 
+      <section class="explanation-panel" id="ontologyTab" hidden>
+        <div class="graph-head">
+          <h2>Ontology Viewer</h2>
+          <div class="graph-actions">
+            <button id="refreshOntologyButton" class="pill small-pill" type="button">Load Ontology</button>
+          </div>
+        </div>
+        <div class="graph-legend" aria-label="Ontology graph legend">
+          <span><i class="legend-dot class"></i>Class</span>
+          <span><i class="legend-dot instance"></i>Instance</span>
+          <span><i class="legend-dot property"></i>Property</span>
+          <span><i class="legend-line"></i>Ontology predicate</span>
+        </div>
+        <div id="ontologyFilters" class="graph-filters visible" aria-label="Ontology graph filters">
+          <label><input type="checkbox" data-ontology-filter="class" checked> Classes</label>
+          <label><input type="checkbox" data-ontology-filter="subclass" checked> Subclasses</label>
+          <label><input type="checkbox" data-ontology-filter="instance" checked> Instances</label>
+          <label><input type="checkbox" data-ontology-filter="property" checked> Properties</label>
+        </div>
+        <div id="ontologyViewerStatus" class="status-text">Load the ontology graph to inspect classes, subclasses, instances, and properties.</div>
+        <svg id="ontologyGraph" viewBox="0 0 1100 420" role="img" aria-label="Ontology viewer graph"></svg>
+        <section id="ontologyDetails" class="graph-details" aria-live="polite">
+          <h3>Ontology Node Details</h3>
+          <p>Click an ontology node to inspect its connected predicates.</p>
+        </section>
+      </section>
+
       <section class="explanation-panel" id="nlTab" hidden>
         <div class="section-head compact-head">
-          <h2>Natural Language Explanation</h2>
+          <h2>NL Language Explanations</h2>
           <div class="section-actions">
             <button id="generateOpenAiExplanationButton" class="pill small-pill" type="button">Use OpenAI</button>
             <button id="generateLlmReasoningButton" class="pill small-pill" type="button">Use Ollama</button>
@@ -237,8 +264,12 @@
       </section>
 
       <section class="explanation-panel" id="nnXaiTab" hidden>
+        <section id="selectedFactXai" class="selected-fact-xai">
+          <h3>Selected Fact NN Contribution</h3>
+          <p>Select a reasoned fact to see which neural-network prediction and XYZ feature influences contributed to it.</p>
+        </section>
         <div class="section-head compact-head">
-          <h2>NN XAI: LIME Explanation</h2>
+          <h2>XAI: LIME Explanation</h2>
           <button id="refreshLimeButton" class="pill small-pill" type="button">Run LIME</button>
         </div>
         <p class="xai-note">LIME explains the local NN prediction around the current X, Y, Z task using feature weights for X, Y, and Z.</p>
@@ -253,10 +284,6 @@
             <p>Shows which explanation sources are available for the current task.</p>
           </section>
         </div>
-        <section id="selectedFactXai" class="selected-fact-xai">
-          <h3>Selected Fact NN Contribution</h3>
-          <p>Select a reasoned fact to see which neural-network prediction and XYZ feature influences contributed to it.</p>
-        </section>
         <section class="xai-method-section lime-method-section">
           <div class="method-head">
             <h3>LIME Local Explanation</h3>
@@ -331,7 +358,7 @@
         Note: once you execute, these values will be updated in the Knowledge Graph for the further reasoning process.
       </p>
       <p class="result-note">
-        If you want to add a hypothetical value for counterfactual explanation, press the Simulated Value button.
+        If you want to add a hypothetical value for counterfactual simulation, press the Simulated Value button.
       </p>
       <section id="simulationPanel" class="simulation-panel" hidden>
         <div class="simulation-grid" id="simulationGrid"></div>
@@ -360,6 +387,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=20260530-nl-provider-choice"></script>
+  <script src="app.js?v=20260608-xai-fact-selector"></script>
 </body>
 </html>

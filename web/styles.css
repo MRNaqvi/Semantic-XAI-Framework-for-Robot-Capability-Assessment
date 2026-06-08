@@ -187,6 +187,12 @@ body {
   font-size: 14px;
 }
 
+.resource-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 8px;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -755,6 +761,18 @@ body {
   background: #f0a3a1;
 }
 
+.legend-dot.class {
+  background: #dcf7df;
+}
+
+.legend-dot.instance {
+  background: #d9f3fb;
+}
+
+.legend-dot.property {
+  background: #fff4cf;
+}
+
 .legend-line {
   width: 24px;
   height: 3px;
@@ -792,7 +810,8 @@ body {
   accent-color: var(--accent);
 }
 
-#factGraph {
+#factGraph,
+#ontologyGraph {
   width: 100%;
   min-height: 420px;
   border: 1px solid var(--field-border);
@@ -837,6 +856,18 @@ body {
 
 .graph-node.fact circle {
   fill: #e5d8ff;
+}
+
+.graph-node.class circle {
+  fill: #dcf7df;
+}
+
+.graph-node.instance circle {
+  fill: #d9f3fb;
+}
+
+.graph-node.property circle {
+  fill: #fff4cf;
 }
 
 .graph-node.selected circle {
@@ -1235,6 +1266,27 @@ body {
 .selected-fact-xai p {
   margin: 0 0 10px;
   color: var(--muted);
+}
+
+.selected-fact-picker {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 12px;
+  max-width: 620px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.selected-fact-picker select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--text);
+  padding: 0 12px;
+  font-weight: 700;
 }
 
 .selected-xai-grid {
