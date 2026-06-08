@@ -113,7 +113,8 @@ const refreshOntologyButton = document.querySelector("#refreshOntologyButton");
 const ontologyGraph = document.querySelector("#ontologyGraph");
 const ontologyDetails = document.querySelector("#ontologyDetails");
 const ontologyViewerStatus = document.querySelector("#ontologyViewerStatus");
-const ontologyFilterInputs = Array.from(document.querySelectorAll("[data-ontology-filter]"));
+const ontologySearchInput = document.querySelector("#ontologySearchInput");
+const ontologyTypeSelect = document.querySelector("#ontologyTypeSelect");
 
 let lastResult = null;
 let lastCoordinates = [];
@@ -143,6 +144,7 @@ const graphFilters = {
   selectedRobotOnly: false,
 };
 const ontologyFilters = {
+  mode: "all",
   class: true,
   subclass: true,
   instance: true,
@@ -1549,8 +1551,10 @@ LIMIT 260`;
 }
 
 function updateOntologyFilters() {
-  ontologyFilterInputs.forEach((input) => {
-    ontologyFilters[input.dataset.ontologyFilter] = input.checked;
+  const mode = ontologyTypeSelect?.value || "all";
+  ontologyFilters.mode = mode;
+  ["class", "subclass", "instance", "property"].forEach((key) => {
+    ontologyFilters[key] = mode === "all" || mode === key;
   });
 }
 
@@ -1589,6 +1593,17 @@ function ontologyNodeKind(value, triples) {
 
 function shouldShowOntologyTriple(triple) {
   return ontologyFilters[ontologyTripleCategory(triple)];
+}
+
+function matchesOntologySearch(triple) {
+  const query = ontologySearchInput?.value?.trim().toLowerCase() || "";
+  if (!query) {
+    return true;
+  }
+
+  return [triple.s, triple.p, triple.o]
+    .map((value) => shortName(value).toLowerCase())
+    .some((value) => value.includes(query));
 }
 
 function renderOntologyDetails(node, edges, nodeMap) {
@@ -1642,7 +1657,7 @@ function ontologySvgPointFromEvent(event) {
 
 function renderOntologyCanvas(nodes, edges, options = {}) {
   const graphWidth = options.width || 1280;
-  const graphHeight = options.height || 560;
+  const graphHeight = options.height || 680;
   ontologyGraph.setAttribute("viewBox", `0 0 ${graphWidth} ${graphHeight}`);
   ontologyGraph.style.minHeight = `${graphHeight}px`;
   ontologyGraph.innerHTML = "";
@@ -1735,35 +1750,58 @@ function renderOntologyCanvas(nodes, edges, options = {}) {
 
 function renderOntologyGraph() {
   updateOntologyFilters();
-  const visibleTriples = ontologyTriples.filter(shouldShowOntologyTriple);
+  const visibleTriples = ontologyTriples
+    .filter(shouldShowOntologyTriple)
+    .filter(matchesOntologySearch);
   if (!visibleTriples.length) {
     ontologyGraph.innerHTML = "";
     ontologyViewerStatus.textContent = ontologyTriples.length
-      ? "No ontology triples match the current filters."
+      ? "No ontology triples match the current search or filter."
       : "Load the ontology graph to inspect classes, subclasses, instances, and properties.";
     return;
   }
 
   const nodeValues = Array.from(new Set(visibleTriples.flatMap((triple) => [triple.s, triple.o]).filter((value) => value && !value.startsWith("\""))));
   const nodesByValue = new Map();
-  const columns = {
-    class: { x: 210, count: 0 },
-    instance: { x: 610, count: 0 },
-    property: { x: 1010, count: 0 },
+  const graphWidth = 1280;
+  const groups = {
+    class: [],
+    instance: [],
+    property: [],
   };
+
   nodeValues.slice(0, 85).forEach((value, index) => {
     const kind = ontologyNodeKind(value, ontologyTriples);
-    const column = columns[kind] || columns.instance;
-    const y = 80 + column.count * 92;
-    column.count += 1;
-    nodesByValue.set(value, {
+    const node = {
       id: `ontology-${index}`,
       raw: value,
       label: wrapOntologyName(shortName(value)),
-      x: column.x,
-      y,
       kind,
       radius: kind === "property" ? 36 : 42,
+    };
+    (groups[kind] || groups.instance).push(node);
+    nodesByValue.set(value, node);
+  });
+
+  const maxGroupSize = Math.max(...Object.values(groups).map((group) => group.length), 1);
+  const graphHeight = Math.min(900, Math.max(640, 620 + Math.ceil(maxGroupSize / 18) * 82));
+  const center = { x: graphWidth / 2, y: graphHeight / 2 };
+  const layoutConfig = {
+    class: { radius: 145, offset: -Math.PI / 2, spread: 0.78 },
+    instance: { radius: 255, offset: Math.PI / 7, spread: 0.76 },
+    property: { radius: 365, offset: Math.PI / 2.35, spread: 0.74 },
+  };
+
+  Object.entries(groups).forEach(([kind, group]) => {
+    const config = layoutConfig[kind] || layoutConfig.instance;
+    group.forEach((node, index) => {
+      const ring = Math.floor(index / 18);
+      const ringStart = ring * 18;
+      const ringCount = Math.min(18, group.length - ringStart);
+      const radius = config.radius + ring * 74;
+      const angle = config.offset + (Math.PI * 2 * ((index - ringStart) / Math.max(ringCount, 1))) + ring * 0.17;
+      node.x = center.x + Math.cos(angle) * radius;
+      node.y = center.y + Math.sin(angle) * radius * config.spread;
     });
   });
 
@@ -1782,10 +1820,12 @@ function renderOntologyGraph() {
   });
 
   const nodes = Array.from(nodesByValue.values());
-  const maxColumnCount = Math.max(...Object.values(columns).map((column) => column.count), 1);
-  const graphHeight = Math.max(560, 120 + maxColumnCount * 92);
-  ontologyViewerStatus.textContent = `Showing ${nodes.length} ontology node(s) and ${edges.length} predicate edge(s).`;
-  renderOntologyCanvas(nodes, edges, { height: graphHeight });
+  const filterLabel = ontologyTypeSelect?.selectedOptions?.[0]?.textContent || "All ontology elements";
+  const searchLabel = ontologySearchInput?.value?.trim()
+    ? ` matching "${ontologySearchInput.value.trim()}"`
+    : "";
+  ontologyViewerStatus.textContent = `Showing ${nodes.length} centered ontology node(s) and ${edges.length} predicate edge(s) for ${filterLabel}${searchLabel}.`;
+  renderOntologyCanvas(nodes, edges, { width: graphWidth, height: graphHeight });
 }
 
 async function loadOntologyGraph() {
@@ -2874,9 +2914,12 @@ selectedRobotOnlyFilter.addEventListener("change", () => {
     renderWholeGraph();
   }
 });
-ontologyFilterInputs.forEach((input) => {
-  input.addEventListener("change", renderOntologyGraph);
+let ontologySearchTimer = null;
+ontologySearchInput?.addEventListener("input", () => {
+  window.clearTimeout(ontologySearchTimer);
+  ontologySearchTimer = window.setTimeout(renderOntologyGraph, 120);
 });
+ontologyTypeSelect?.addEventListener("change", renderOntologyGraph);
 cancelButton.addEventListener("click", closeDialog);
 okButton.addEventListener("click", closeDialog);
 uploadOntologyButton.addEventListener("click", () => ontologyFile.click());

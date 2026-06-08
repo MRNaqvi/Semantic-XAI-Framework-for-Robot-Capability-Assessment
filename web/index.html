@@ -229,11 +229,21 @@
           <span><i class="legend-dot property"></i>Property</span>
           <span><i class="legend-line"></i>Ontology predicate</span>
         </div>
-        <div id="ontologyFilters" class="graph-filters visible" aria-label="Ontology graph filters">
-          <label><input type="checkbox" data-ontology-filter="class" checked> Classes</label>
-          <label><input type="checkbox" data-ontology-filter="subclass" checked> Subclasses</label>
-          <label><input type="checkbox" data-ontology-filter="instance" checked> Instances</label>
-          <label><input type="checkbox" data-ontology-filter="property" checked> Properties</label>
+        <div class="ontology-toolbar" aria-label="Ontology viewer controls">
+          <label>
+            <span>Search</span>
+            <input id="ontologySearchInput" type="search" placeholder="Class, instance, property, predicate">
+          </label>
+          <label>
+            <span>Show</span>
+            <select id="ontologyTypeSelect">
+              <option value="all">All ontology elements</option>
+              <option value="class">Classes</option>
+              <option value="subclass">Subclass links</option>
+              <option value="instance">Instances</option>
+              <option value="property">Properties</option>
+            </select>
+          </label>
         </div>
         <div id="ontologyViewerStatus" class="status-text">Load the ontology graph to inspect classes, subclasses, instances, and properties.</div>
         <svg id="ontologyGraph" viewBox="0 0 1100 420" role="img" aria-label="Ontology viewer graph"></svg>
@@ -393,6 +403,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=20260608-rule-viewer"></script>
+  <script src="app.js?v=20260608-centered-ontology"></script>
 </body>
 </html>
