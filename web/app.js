@@ -67,6 +67,8 @@ const openAiKeyInput = document.querySelector("#openAiKeyInput");
 const saveOpenAiKeyButton = document.querySelector("#saveOpenAiKeyButton");
 const cancelOpenAiKeyButton = document.querySelector("#cancelOpenAiKeyButton");
 const ruleList = document.querySelector("#ruleList");
+const ruleViewerStatus = document.querySelector("#ruleViewerStatus");
+const refreshRulesViewerButton = document.querySelector("#refreshRulesViewerButton");
 const beforeFacts = document.querySelector("#beforeFacts");
 const afterFacts = document.querySelector("#afterFacts");
 const limeStatus = document.querySelector("#limeStatus");
@@ -128,6 +130,7 @@ let simulatedMode = false;
 let ruleLogEntries = [];
 let activeOntologyName = defaultOntologyName;
 let activeRuleName = defaultRuleName;
+let activeRuleText = "";
 let activeModelNames = "No models loaded";
 let graphMode = "selected";
 let openAiSessionKey = sessionStorage.getItem("sxaiOpenAiKey") || "";
@@ -203,45 +206,6 @@ const factLabels = {
   "RCO:WorstRobot": "Worst robot",
   "RCO:OptimalRobot": "Optimal robot",
 };
-
-const ruleDefinitions = [
-  {
-    title: "Maximum Repeatability Capability",
-    text: "Finds the largest operational repeatability value among all robots.",
-  },
-  {
-    title: "Maximum Precision Capability",
-    text: "Finds the largest operational precision value among all robots.",
-  },
-  {
-    title: "Minimum Repeatability Capability",
-    text: "Finds the smallest operational repeatability value among all robots.",
-  },
-  {
-    title: "Minimum Precision Capability",
-    text: "Finds the smallest operational precision value among all robots.",
-  },
-  {
-    title: "Best Suitable Due To Repeatability",
-    text: "Classifies the robot with the minimum operational repeatability value as best suitable due to repeatability.",
-  },
-  {
-    title: "Best Suitable Due To Precision",
-    text: "Classifies the robot with the maximum operational precision value as best suitable due to precision.",
-  },
-  {
-    title: "Least Suitable Due To Repeatability",
-    text: "Classifies the robot with the maximum operational repeatability value as least suitable due to repeatability.",
-  },
-  {
-    title: "Least Suitable Due To Precision",
-    text: "Classifies the robot with the minimum operational precision value as least suitable due to precision.",
-  },
-  {
-    title: "Optimal Robot",
-    text: "Classifies a robot as optimal when it satisfies the secondary capability condition among robots already best in repeatability or precision.",
-  },
-];
 
 function parseCoordinates(value) {
   const parts = value
@@ -371,14 +335,44 @@ async function postJson(url, body, timeoutMs = defaultRequestTimeoutMs) {
   }
 }
 
-function renderRules() {
-  ruleList.innerHTML = "";
-  ruleDefinitions.forEach((rule) => {
-    const card = document.createElement("article");
-    card.className = "rule-card";
-    card.innerHTML = `<h3>${rule.title}</h3><p>${rule.text}</p>`;
-    ruleList.appendChild(card);
-  });
+async function ensureRuleTextLoaded() {
+  if (activeRuleText) {
+    return activeRuleText;
+  }
+
+  const response = await fetch("assets/custom/c21.dlog");
+  if (!response.ok) {
+    throw new Error("Default Datalog rule file could not be loaded.");
+  }
+  activeRuleText = await response.text();
+  activeRuleName = defaultRuleName;
+  renderAssetStatus();
+  return activeRuleText;
+}
+
+async function renderRules() {
+  if (!ruleList) {
+    return;
+  }
+
+  try {
+    if (refreshRulesViewerButton) {
+      refreshRulesViewerButton.disabled = true;
+      refreshRulesViewerButton.textContent = "Loading...";
+    }
+    const text = await ensureRuleTextLoaded();
+    ruleViewerStatus.textContent = `Datalog rules: ${activeRuleName}`;
+    ruleList.textContent = text;
+  } catch (error) {
+    ruleViewerStatus.textContent = error.message;
+    ruleList.textContent = "No Datalog rules available.";
+    appendRuleLog(`Rule viewer failed: ${error.message}`);
+  } finally {
+    if (refreshRulesViewerButton) {
+      refreshRulesViewerButton.disabled = false;
+      refreshRulesViewerButton.textContent = "Refresh Rules";
+    }
+  }
 }
 
 function renderLimeResults(payload) {
@@ -1055,6 +1049,9 @@ function activateExplanationTab(tabId) {
   if (tabId === "sparqlTab") {
     refreshQueryViewer();
   }
+  if (tabId === "rulesTab") {
+    renderRules();
+  }
   if (tabId === "ontologyTab" && !ontologyTriples.length) {
     loadOntologyGraph();
   }
@@ -1105,7 +1102,9 @@ async function uploadRulesFromFile() {
     const text = await fileToText(rulesFile.files[0]);
     await uploadRuleText(text, "Custom Datalog rules uploaded.");
     activeRuleName = fileName;
+    activeRuleText = text;
     renderAssetStatus();
+    renderRules();
     appendRuleLog(`Datalog rule uploaded: ${fileName}.`);
   } catch (error) {
     statusText.textContent = error.message;
@@ -2680,7 +2679,9 @@ async function uploadKnowledgeBase() {
     await uploadRuleText(dlogText);
     activeOntologyName = defaultOntologyName;
     activeRuleName = defaultRuleName;
+    activeRuleText = dlogText;
     renderAssetStatus();
+    renderRules();
     resetOntologyViewer("Default ontology reloaded. Open Ontology Viewer to inspect it.");
     statusText.textContent = "";
     appendRuleLog(`Default S-XAI ontology (${defaultOntologyName}) and Datalog rules (${defaultRuleName}) reloaded.`);
@@ -2853,6 +2854,7 @@ refreshLimeButton.addEventListener("click", runLimeExplanation);
 refreshShapButton.addEventListener("click", runShapExplanation);
 refreshIgButton.addEventListener("click", runIntegratedGradientsExplanation);
 refreshPermutationButton.addEventListener("click", runPermutationExplanation);
+refreshRulesViewerButton?.addEventListener("click", renderRules);
 selectedGraphButton.addEventListener("click", () => renderGraph(selectedFact));
 wholeGraphButton.addEventListener("click", renderWholeGraph);
 exportSvgButton.addEventListener("click", exportGraphSvg);

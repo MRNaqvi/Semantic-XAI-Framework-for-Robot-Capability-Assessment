@@ -645,6 +645,22 @@ body {
   white-space: pre-wrap;
 }
 
+.rule-source-viewer {
+  min-height: 560px;
+  max-height: 68vh;
+  margin: 14px 0 0;
+  padding: 16px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: #111827;
+  color: #f7fbff;
+  overflow: auto;
+  white-space: pre;
+  font-size: 13px;
+  line-height: 1.55;
+  tab-size: 4;
+}
+
 .comparison-grid h3 {
   margin: 0 0 8px;
   color: var(--muted);

@@ -153,11 +153,10 @@
       <div class="explanation-tabs" role="tablist" aria-label="Explanation views">
         <button class="explanation-tab active" type="button" data-explanation-tab="factsTab">Reasoned Facts</button>
         <button class="explanation-tab" type="button" data-explanation-tab="graphTab">Graph</button>
-        <button class="explanation-tab" type="button" data-explanation-tab="ontologyTab">Ontology Viewer</button>
         <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Simulated / Counterfactual Comparison</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nnXaiTab">XAI</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nlTab">NL Language Explanations</button>
-        <button class="explanation-tab" type="button" data-explanation-tab="rulesTab">Rules</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="rulesTab">Rule Viewer</button>
         <button class="explanation-tab" type="button" data-explanation-tab="sparqlTab">SPARQL</button>
       </div>
 
@@ -318,8 +317,15 @@
       </section>
 
       <section class="explanation-panel" id="rulesTab" hidden>
-        <h2>Datalog Rule Explanation</h2>
-        <div id="ruleList" class="rule-list"></div>
+        <div class="section-head compact-head">
+          <div>
+            <h2>Rule Viewer</h2>
+            <p class="xai-note">Showing the active Datalog rules exactly as loaded from the <code>.dlog</code> source file.</p>
+          </div>
+          <button id="refreshRulesViewerButton" class="pill small-pill" type="button">Refresh Rules</button>
+        </div>
+        <div id="ruleViewerStatus" class="status-text">Datalog rules: c21.dlog</div>
+        <pre id="ruleList" class="rule-source-viewer">Loading Datalog rules...</pre>
       </section>
 
       <section class="explanation-panel" id="sparqlTab" hidden>
@@ -387,6 +393,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=20260608-xai-fact-selector"></script>
+  <script src="app.js?v=20260608-rule-viewer"></script>
 </body>
 </html>
