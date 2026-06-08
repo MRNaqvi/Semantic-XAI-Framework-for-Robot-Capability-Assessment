@@ -158,7 +158,7 @@
         <button class="explanation-tab" type="button" data-explanation-tab="graphTab">Graph</button>
         <button class="explanation-tab" type="button" data-explanation-tab="counterfactualTab">Simulated / Counterfactual Comparison</button>
         <button class="explanation-tab" type="button" data-explanation-tab="nnXaiTab">XAI</button>
-        <button class="explanation-tab" type="button" data-explanation-tab="nlTab">NL Language Explanations</button>
+        <button class="explanation-tab" type="button" data-explanation-tab="nlTab">Natural Language Explanations</button>
         <button class="explanation-tab" type="button" data-explanation-tab="sparqlTab">SPARQL</button>
       </div>
 
@@ -257,7 +257,7 @@
 
       <section class="explanation-panel" id="nlTab" hidden>
         <div class="section-head compact-head">
-          <h2>NL Language Explanations</h2>
+          <h2>Natural Language Explanations</h2>
         </div>
         <div class="llm-provider-row">
           <label class="llm-provider-field" for="nlProviderSelect">
@@ -272,7 +272,7 @@
           <button id="generateNlExplanationButton" class="pill small-pill" type="button">Generate Explanation</button>
         </div>
         <div id="llmReasoningStatus" class="status-text">Choose a provider after selecting a reasoned fact.</div>
-        <pre id="nlExplanation"></pre>
+        <pre id="nlExplanation" hidden></pre>
         <div id="llmReasoningOutput" class="llm-reasoning-output"></div>
       </section>
 
@@ -407,6 +407,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=20260608-nl-provider-dropdown"></script>
+  <script src="app.js?v=20260609-nl-clean-output"></script>
 </body>
 </html>

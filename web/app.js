@@ -2341,7 +2341,7 @@ async function generateOpenAiExplanation() {
   try {
     generateNlExplanationButton.disabled = true;
     generateNlExplanationButton.textContent = "Generating...";
-    llmReasoningStatus.textContent = "Asking OpenAI to explain the selected RDFox/Datalog fact...";
+    llmReasoningStatus.textContent = "Generating...";
 
     const payload = await postJson(factExplainUrl, {
       store_name: datastoreInput.value.trim() || "S-XAI",
@@ -2368,7 +2368,7 @@ async function generateOpenAiExplanation() {
 
     lastFactExplanationPayload = normalizedPayload;
     renderLlmReasoning(normalizedPayload);
-    llmReasoningStatus.textContent = "OpenAI natural language explanation generated.";
+    llmReasoningStatus.textContent = "";
     appendRuleLog("OpenAI natural language explanation generated for selected fact.");
   } catch (error) {
     if (error.message.toLowerCase().includes("api key") || error.message.toLowerCase().includes("401")) {
@@ -2392,7 +2392,7 @@ async function generateLlmReasoning() {
   try {
     generateNlExplanationButton.disabled = true;
     generateNlExplanationButton.textContent = "Generating...";
-    llmReasoningStatus.textContent = "Fetching raw RDFox JSON, then asking Ollama...";
+    llmReasoningStatus.textContent = "Generating...";
 
     const rawPayload = await postJson(factExplainRawUrl, {
       store_name: datastoreInput.value.trim() || "S-XAI",
@@ -2402,7 +2402,6 @@ async function generateLlmReasoning() {
 
     const context = makeSelectedFactContext();
     const model = defaultOllamaModel;
-    llmReasoningStatus.textContent = `RDFox JSON received. Asking Ollama model ${model}...`;
     const openPayload = await postJson(openLlmReasoningUrl, {
       model,
       selected_fact: context.factText,
@@ -2428,7 +2427,7 @@ async function generateLlmReasoning() {
 
     lastFactExplanationPayload = payload;
     renderLlmReasoning(payload);
-    llmReasoningStatus.textContent = `Ollama natural language explanation generated with model ${payload.data.model}.`;
+    llmReasoningStatus.textContent = "";
     appendRuleLog(`Ollama natural language explanation generated with ${payload.data.model}.`);
   } catch (error) {
     if (error.message.includes("404") && error.message.includes("Not Found")) {
