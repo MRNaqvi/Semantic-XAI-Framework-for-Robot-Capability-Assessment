@@ -258,19 +258,21 @@
       <section class="explanation-panel" id="nlTab" hidden>
         <div class="section-head compact-head">
           <h2>NL Language Explanations</h2>
-          <div class="section-actions">
-            <button id="generateOpenAiExplanationButton" class="pill small-pill" type="button">Use OpenAI</button>
-            <button id="generateLlmReasoningButton" class="pill small-pill" type="button">Use Ollama</button>
-          </div>
         </div>
-        <p class="xai-note">Choose OpenAI with your API key or use the free local Ollama model. Both explain the selected RDFox/Datalog fact in natural language.</p>
-        <label class="llm-model-field" for="openLlmModel">
-          Ollama model
-          <input id="openLlmModel" type="text" value="llama3.2:3b" autocomplete="off">
-        </label>
-        <p class="xai-note">For Ollama, install Ollama and run <code>ollama pull llama3.2:3b</code>. For OpenAI, click Use OpenAI and paste your key when asked.</p>
-        <div id="llmReasoningStatus" class="status-text">Select a reasoned fact, then choose OpenAI or Ollama.</div>
-        <pre id="nlExplanation">Select a fact and click Explain.</pre>
+        <div class="llm-provider-row">
+          <label class="llm-provider-field" for="nlProviderSelect">
+            <span>Provider</span>
+            <select id="nlProviderSelect">
+              <option value="openai">OpenAI</option>
+              <option value="ollama">Ollama</option>
+              <option value="mistral">Mistral</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </label>
+          <button id="generateNlExplanationButton" class="pill small-pill" type="button">Generate Explanation</button>
+        </div>
+        <div id="llmReasoningStatus" class="status-text">Choose a provider after selecting a reasoned fact.</div>
+        <pre id="nlExplanation"></pre>
         <div id="llmReasoningOutput" class="llm-reasoning-output"></div>
       </section>
 
@@ -405,6 +407,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=20260608-front-rule-viewer"></script>
+  <script src="app.js?v=20260608-nl-provider-dropdown"></script>
 </body>
 </html>
