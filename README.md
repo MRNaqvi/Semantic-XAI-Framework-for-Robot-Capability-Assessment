@@ -11,7 +11,15 @@ This project runs a robot operational capability workflow:
 
 ## Version Note
 
-This S-XAI demo version includes Natural Language explanations. In the Natural Language tab, choose `Use OpenAI` and paste your OpenAI API key for the current browser session, or choose `Use Ollama` to run a local open model. Without either provider, model prediction, KG updates, facts, and graph explanations still work.
+This S-XAI version includes Natural Language explanations. In the Natural Language tab, choose `OpenAI` and paste your OpenAI API key for the current browser session, or choose `Ollama` to run a local open model. Without either provider, model prediction, KG updates, facts, and graph explanations still work.
+
+## Interface Function Guide
+
+A detailed page-by-page guide for the Main page, Explanations page, and System Logs is available here:
+
+```text
+docs\S-XAI-UI-Function-Guide.md
+```
 
 ## Requirements
 
@@ -153,7 +161,7 @@ The page auto-loads the default `S-XAI` datastore, ontology, Datalog rules, and 
 After the app opens, SHAP is available from:
 
 ```text
-Explanations -> NN XAI -> Run SHAP
+Explanations -> XAI -> Run SHAP
 ```
 
 If SHAP fails on a new machine, rerun:
@@ -196,7 +204,7 @@ The `Natural Language` tab can also use Ollama with a free local open model. It 
 
 ## Custom Inputs
 
-The UI includes tabs for:
+The UI includes controls for:
 
 - Custom ontology files
 - Custom Datalog rules
