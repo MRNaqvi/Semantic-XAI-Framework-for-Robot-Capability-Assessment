@@ -389,17 +389,7 @@ Exports an HTML report containing the current explanation state. Depending on wh
 
 The report reflects the current UI state, so the user should run the desired explanations before exporting.
 
-### 2.2 Source Strip
-
-The source strip explains the possible origin of values shown in the explanation workflow:
-
-- `Ontology original value`
-- `Model prediction`
-- `User simulated value`
-
-The strip helps the user distinguish between values already present in the ontology, values predicted by neural models, and values manually entered for simulation.
-
-### 2.3 Reasoned Facts Tab
+### 2.2 Reasoned Facts Tab
 
 The `Reasoned Facts` tab lists the suitability facts produced by the rule-based decision mechanism.
 
@@ -437,7 +427,7 @@ What it does:
 
 The Reasoned Facts tab is the main entry point for fact-specific explanation.
 
-### 2.4 Graph Tab
+### 2.3 Graph Tab
 
 The `Graph` tab visualizes the semantic reasoning context.
 
@@ -487,7 +477,7 @@ Graph legend:
 - Robot
 - Capability
 - NN prediction value
-- User simulated value
+- Simulated measurement
 - Selected reasoned fact
 - RDF predicate
 
@@ -523,7 +513,7 @@ Important semantic point:
 
 Properties such as `RCO:hasCapability` and `RCO:has_Measurement_Value` are shown as edge labels, not as ordinary nodes, because they connect entities and values in the graph.
 
-### 2.5 Simulated / Counterfactual Comparison Tab
+### 2.4 Simulated / Counterfactual Comparison Tab
 
 The `Simulated / Counterfactual Comparison` tab compares baseline facts and simulated facts.
 
@@ -549,7 +539,7 @@ Examples of what the panel can explain:
 
 This tab does not create the simulation itself. Simulation values are entered in the result dialog on the Main page. This tab explains the before/after effect.
 
-### 2.6 XAI Tab
+### 2.5 XAI Tab
 
 The `XAI` tab explains the neural model behavior around the current Cartesian task point.
 
@@ -562,7 +552,7 @@ The XAI methods operate on:
 
 The methods do not replace RDFox reasoning. They explain the neural values that later become KG measurement values.
 
-#### 2.6.1 Selected Fact NN Contribution
+#### 2.5.1 Selected Fact NN Contribution
 
 This panel links a selected semantic fact to the neural explanation.
 
@@ -581,7 +571,7 @@ The panel can show:
 
 If LIME has not been run yet, the panel tells the user to run or refresh LIME.
 
-#### 2.6.2 Run LIME
+#### 2.5.2 Run LIME
 
 Button: `Run LIME`
 
@@ -603,7 +593,7 @@ LIME output explains:
 - Whether increasing that coordinate locally increases or decreases the predicted value.
 - Separate explanations for repeatability and precision.
 
-#### 2.6.3 XAI Confidence / Stability
+#### 2.5.3 XAI Confidence / Stability
 
 This panel estimates whether the strongest local feature is stable for the current task.
 
@@ -611,7 +601,7 @@ It uses the relationship between the strongest and second strongest LIME feature
 
 This is a UI-level explanation quality indicator, not a replacement for formal model validation.
 
-#### 2.6.4 Explanation Quality
+#### 2.5.4 Explanation Quality
 
 This panel summarizes which explanation layers are currently available.
 
@@ -628,7 +618,7 @@ It can reflect availability of:
 
 The purpose is to show whether the selected conclusion is supported by semantic, neural, and language explanation evidence.
 
-#### 2.6.5 LIME Local Explanation
+#### 2.5.5 LIME Local Explanation
 
 The LIME results section stays separate from other XAI methods.
 
@@ -646,7 +636,7 @@ LIME answers:
 Around this exact Cartesian task point, which coordinate locally matters most for this NN output?
 ```
 
-#### 2.6.6 SHAP Comparison
+#### 2.5.6 SHAP Comparison
 
 Button: `Run SHAP`
 
@@ -665,7 +655,7 @@ How should the current NN prediction be attributed across X, Y, and Z according 
 
 SHAP output is shown in its own section and does not move or overwrite the LIME cards.
 
-#### 2.6.7 Integrated Gradients
+#### 2.5.7 Integrated Gradients
 
 Button: `Run IG`
 
@@ -683,7 +673,7 @@ Integrated Gradients answers:
 From a baseline task point to this task point, which coordinates contribute most to the NN output?
 ```
 
-#### 2.6.8 Permutation Importance
+#### 2.5.8 Permutation Importance
 
 Button: `Run Permutation`
 
@@ -701,7 +691,7 @@ Permutation Importance answers:
 If one coordinate is changed while the others stay fixed, how much does the NN output move?
 ```
 
-### 2.7 Natural Language Explanations Tab
+### 2.6 Natural Language Explanations Tab
 
 The `Natural Language Explanations` tab converts the selected RDFox/Datalog fact context into a human-readable explanation.
 
@@ -716,7 +706,7 @@ Button: `Generate Explanation`
 
 What it does depends on the selected provider.
 
-#### 2.7.1 OpenAI Provider
+#### 2.6.1 OpenAI Provider
 
 When `OpenAI` is selected:
 
@@ -730,7 +720,7 @@ When `OpenAI` is selected:
 
 The OpenAI key is stored in browser session storage only. It is not committed to Git.
 
-#### 2.7.2 Ollama Provider
+#### 2.6.2 Ollama Provider
 
 When `Ollama` is selected:
 
@@ -750,7 +740,7 @@ llama3.2:3b
 
 Ollama must be installed and the model must be pulled locally before this provider works.
 
-#### 2.7.3 Mistral and Gemini Providers
+#### 2.6.3 Mistral and Gemini Providers
 
 `Mistral` and `Gemini` are present in the provider dropdown for planned provider support.
 
@@ -760,7 +750,7 @@ Current behavior:
 - The interface reports that the provider is not configured.
 - A system log entry records the unsupported provider selection.
 
-#### 2.7.4 Natural Language Output
+#### 2.6.4 Natural Language Output
 
 The generated output includes:
 
@@ -774,7 +764,7 @@ The generated output includes:
 
 The natural language paragraph is designed to be formal and decision-focused. For example, instead of saying RDFox makes a decision, it explains that the rule-based decision mechanism applies the Datalog rule and identifies the robot using the compared operational capability values.
 
-### 2.8 SPARQL Tab
+### 2.7 SPARQL Tab
 
 The `SPARQL` tab shows the queries used by the system.
 
@@ -794,7 +784,7 @@ RCO:has_Measurement_Value
 
 This tab is useful for debugging and for showing exactly how the browser updates the knowledge graph.
 
-### 2.9 Ontology Viewer Panel
+### 2.8 Ontology Viewer Panel
 
 The `Ontology Viewer` is opened from the Main page `Upload your OWL/RDF ontology` card. It is displayed inside the Explanations page but is not part of the normal explanation tab row.
 
@@ -846,7 +836,7 @@ Ontology Node Details can show:
 
 The Ontology Viewer is for inspecting the loaded ontology structure. It does not run reasoning and does not change KG values.
 
-### 2.10 Rule Viewer Panel
+### 2.9 Rule Viewer Panel
 
 The `Rule Viewer` is opened from the Main page `Upload your Datalog rule` card. It is displayed inside the Explanations page but is not part of the normal explanation tab row.
 
@@ -1066,4 +1056,3 @@ Reasoned facts such as BestSuitableDueToRepeatability
         v
 Graph explanation, XAI explanation, Natural Language explanation, SPARQL query, and System Logs
 ```
-

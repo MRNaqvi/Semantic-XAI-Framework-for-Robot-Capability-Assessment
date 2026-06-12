@@ -568,7 +568,6 @@ body {
 
 .section-head,
 .section-actions,
-.source-strip,
 .facts-layout,
 .lower-layout,
 .comparison-grid {
@@ -590,19 +589,6 @@ body {
   min-width: 144px;
   min-height: 44px;
   font-size: 16px;
-}
-
-.source-strip {
-  margin: 14px 0;
-  flex-wrap: wrap;
-}
-
-.source-strip span {
-  padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 20px;
-  color: var(--muted);
-  background: rgba(0, 0, 0, 0.12);
 }
 
 .comparison-panel,
@@ -1052,6 +1038,16 @@ body {
   gap: 12px;
   align-items: end;
   margin: 10px 0 12px;
+}
+
+.nl-generate-button {
+  min-width: 0;
+  width: fit-content;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 22px;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .llm-provider-field {

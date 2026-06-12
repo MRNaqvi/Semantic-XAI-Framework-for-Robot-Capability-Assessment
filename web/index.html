@@ -147,12 +147,6 @@
         </div>
       </div>
 
-      <div class="source-strip" id="sourceStrip">
-        <span>Ontology original value</span>
-        <span>Model prediction</span>
-        <span>User simulated value</span>
-      </div>
-
       <div class="explanation-tabs" role="tablist" aria-label="Explanation views">
         <button class="explanation-tab active" type="button" data-explanation-tab="factsTab">Reasoned Facts</button>
         <button class="explanation-tab" type="button" data-explanation-tab="graphTab">Graph</button>
@@ -199,7 +193,7 @@
           <span><i class="legend-dot robot"></i>Robot</span>
           <span><i class="legend-dot capability"></i>Capability</span>
           <span><i class="legend-dot value"></i>NN prediction value</span>
-          <span><i class="legend-dot simulated"></i>User simulated value</span>
+          <span><i class="legend-dot simulated"></i>Simulated measurement</span>
           <span><i class="legend-dot fact"></i>Selected reasoned fact</span>
           <span><i class="legend-line"></i>RDF predicate</span>
         </div>
@@ -269,7 +263,7 @@
               <option value="gemini">Gemini</option>
             </select>
           </label>
-          <button id="generateNlExplanationButton" class="pill small-pill" type="button">Generate Explanation</button>
+          <button id="generateNlExplanationButton" class="pill small-pill nl-generate-button" type="button">Generate Explanation</button>
         </div>
         <div id="llmReasoningStatus" class="status-text">Choose a provider after selecting a reasoned fact.</div>
         <pre id="nlExplanation" hidden></pre>
