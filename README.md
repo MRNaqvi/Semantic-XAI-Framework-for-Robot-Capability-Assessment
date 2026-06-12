@@ -9,6 +9,12 @@ This project runs a robot operational capability workflow:
 - LIME and SHAP provide local NN XAI feature influence for `X`, `Y`, and `Z`.
 - Natural language explanations can use either the user's own OpenAI API key or a free local Ollama model.
 
+Demo video:
+
+```text
+media\Demo-S-XAI.mp4
+```
+
 ## Version Note
 
 This S-XAI version includes Natural Language explanations. In the Natural Language tab, choose `OpenAI` and paste your OpenAI API key for the current browser session, or choose `Ollama` to run a local open model. Without either provider, model prediction, KG updates, facts, and graph explanations still work.
